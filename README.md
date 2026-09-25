@@ -11,6 +11,15 @@ A collection of AI agent demos built with **NVIDIA NeMo Relay**,
 The repository contains development rules, dependency manifests, and an
 initial environment specification, but no runnable demos or Python code yet.
 
+## Demos
+
+This table is updated as demos are added or developed. Relay capabilities
+listed as planned are not implemented or verified yet.
+
+| Demo | Status | Notes |
+| --- | --- | --- |
+| [Order fulfillment](demos/order_fulfillment/README.md) | Specification and configuration template; not runnable yet | Extracts a product and quantity with an OCI LLM, checks a JSON catalog, and simulates order registration through a tool in a LangGraph workflow. Planned NeMo Relay highlights: tracing graph nodes, LLM calls, and tool execution, with native OTLP export to an OpenTelemetry Collector to inspect successful and rejected order paths. |
+
 ## Development environment
 
 Use Python **3.11 or later** in the Conda environment **`nemo-relay-on-oci`**
@@ -127,6 +136,17 @@ check a JSON catalog, and simulate order registration through a tool.
 See the [draft specification](specs/002-order-fulfillment.md) for confirmed
 requirements, the proposed graph, and decisions to discuss before implementation.
 This demo is not implemented yet.
+
+Each agent will load configuration from a `.env` file in its own folder.
+For order fulfillment, `OCI_REGION` and `MODEL_ID` select the region and model;
+the code will derive the OCI inference endpoint from the region. Authentication
+will support the local user's OCI API signing key (`API_KEY`) and
+`RESOURCE_PRINCIPAL`. The draft specification describes confirmed supporting
+variables for the compartment, authentication selector, and local profile.
+Start with the demo's [.env.example](demos/order_fulfillment/.env.example);
+its [README](demos/order_fulfillment/README.md) explains configuration setup.
+Real `.env` files must remain untracked; private keys stay in the local OCI
+configuration or credentials are supplied by the OCI resource principal runtime.
 
 Each demo will include a link to its specification, prerequisites, dependency
 versions, required OCI configuration, and execution commands. Regular tests

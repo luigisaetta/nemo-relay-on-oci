@@ -53,6 +53,10 @@ If the required environment is missing or unusable, report the blocker.
 Each agent must have its own dedicated folder under `demos/`. Every agent
 must be runnable from the repository root; document the exact startup command
 without requiring users to change into the demo folder.
+Keep the demo table in the root README up to date when adding or changing
+a demo. Include its link, implementation status, and notes explaining the
+agent's purpose and the NeMo Relay capabilities demonstrated. Clearly label
+planned capabilities until they are implemented and verified.
 
 1. Before implementing or changing behavior, create or update the matching
    specification in `specs/`.

@@ -7,6 +7,10 @@ when released.
 
 ### Added
 
+- `demos/order_fulfillment/` with an English README and `.env.example` for
+  OCI model, region, compartment, and authentication configuration.
+- Root README demo index with links, implementation status, and notes on
+  agent behavior and planned NeMo Relay capabilities; maintenance rule in AGENTS.md.
 - Draft specification for the order fulfillment demo, including confirmed
   requirements, a proposed class-based LangGraph workflow, HTTP interface,
   acceptance criteria, and open implementation decisions.
@@ -32,6 +36,12 @@ when released.
 
 ### Changed
 
+- Confirmed the order fulfillment authentication selector, compartment setting,
+  local OCI profile defaults, and process-environment precedence in the spec.
+- Specified per-agent `.env` configuration with `OCI_REGION` and `MODEL_ID`,
+  a derived regional inference endpoint, and support for OCI API signing keys
+  and resource principals. Documented proposed supporting configuration and
+  corresponding acceptance criteria without implementing the demo.
 - README describing the project purpose, development workflow, quality
   requirements, and initial state without Python code.
 - Translated AGENTS.md, README, and changelog into English.

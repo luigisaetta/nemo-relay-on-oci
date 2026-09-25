@@ -1,0 +1,4 @@
+# Local agent configuration; only example templates belong in version control.
+.env
+.env.*
+!.env.example

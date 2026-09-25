@@ -30,6 +30,10 @@ product catalog, and registers an order through a tool when stock permits.
 - The agent is exposed through an HTTP API using FastAPI, started by Uvicorn.
 - The project stack remains OCI Generative AI, `langchain_oci`, LangGraph,
   and NeMo Relay, with traces sent through an OpenTelemetry Collector.
+- Each agent uses a `.env` file in its own folder, with `OCI_REGION` and
+  `MODEL_ID`. The OCI inference endpoint is derived from `OCI_REGION`.
+- OCI authentication supports the local user's API signing key (`API_KEY`)
+  and `RESOURCE_PRINCIPAL`.
 - All documentation is in English. All Python work uses the Conda environment
   `nemo-relay-on-oci` and follows the quality gates in `AGENTS.md`.
 
@@ -90,6 +94,76 @@ will be defined with the implementation design.
 Final route names, response schema, HTTP status codes, health endpoint,
 and Uvicorn module path remain implementation decisions.
 
+## Agent configuration and OCI authentication
+
+The order fulfillment configuration file is
+`demos/order_fulfillment/.env`. Resolve its location relative to the agent's
+module, not the current working directory, so root-level startup works.
+Do not search other demo folders or load another agent's `.env` implicitly.
+
+`OCI_REGION` and `MODEL_ID` are required, nonblank configuration values.
+Construct the native OCI Generative AI inference endpoint from `OCI_REGION`:
+
+```text
+https://inference.generativeai.<OCI_REGION>.oci.oraclecloud.com
+```
+
+This URL pattern applies to OCI's commercial realm. Other realms require
+realm-aware endpoint resolution and are outside the initial demo scope.
+Pass the derived endpoint as `service_endpoint` and `MODEL_ID` as `model_id`
+to `ChatOCIGenAI`. Do not require a separate endpoint variable. `OCI_REGION`
+selects the inference region even when the local OCI profile uses a different
+region. The selected model must be available in the selected region.
+
+The supported authentication modes are:
+
+- **API_KEY:** use the local OCI SDK configuration and the user's API signing
+  key referenced by that configuration. The private key stays outside `.env`
+  and the repository. Defaults: `~/.oci/config`, profile `DEFAULT`.
+- **RESOURCE_PRINCIPAL:** use the resource principal credentials provided by
+  the OCI runtime through the OCI SDK. This mode must not require a local
+  user configuration file or private key.
+
+Pass the selected mode through `ChatOCIGenAI.auth_type`. Do not silently
+fall back to a different authentication mode if credentials are unavailable.
+Here, local key authentication means OCI request signing with `API_KEY`;
+`SECURITY_TOKEN` is a separate SDK mode and is not part of this requirement.
+
+Confirmed supporting variables:
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `OCI_AUTH_TYPE` | `API_KEY` or `RESOURCE_PRINCIPAL` | `API_KEY` |
+| `OCI_CONFIG_FILE` | Local SDK configuration path, API_KEY only | `~/.oci/config` |
+| `OCI_CONFIG_PROFILE` | Local SDK configuration profile, API_KEY only | `DEFAULT` |
+| `OCI_COMPARTMENT_ID` | Target compartment OCID for inference requests | Required; no default |
+
+The compartment is an inference request parameter, independent of the
+authentication mode; do not infer it from the tenancy or resource identity.
+
+Configuration template (placeholders only):
+
+```dotenv
+OCI_REGION=us-chicago-1
+MODEL_ID=<model-id>
+OCI_AUTH_TYPE=API_KEY
+OCI_COMPARTMENT_ID=<compartment-ocid>
+OCI_CONFIG_FILE=~/.oci/config
+OCI_CONFIG_PROFILE=DEFAULT
+```
+
+For resource principal authentication, set `OCI_AUTH_TYPE=RESOURCE_PRINCIPAL`
+and omit the local configuration path and profile.
+
+Existing process environment variables override `.env`
+values, allowing OCI deployments to inject configuration. Validate required
+values and the authentication mode at startup. The tracked template is
+[`demos/order_fulfillment/.env.example`](../demos/order_fulfillment/.env.example);
+real `.env` files must remain untracked. The demo folder and its
+[README](../demos/order_fulfillment/README.md) provide configuration preparation
+instructions from the repository root. The template uses a sample region and
+placeholder model and compartment IDs, which must be replaced for deployment.
+
 ## Observability
 
 The intended trace path is:
@@ -106,24 +180,22 @@ before implementation. Credentials must not be stored in the repository.
 
 ## Decisions to discuss before implementation
 
-1. **OCI model and access:** model ID, region/endpoint, authentication method,
-   and configuration mechanism.
-2. **Product matching:** exact names and aliases, fuzzy matching, or LLM-assisted
+1. **Product matching:** exact names and aliases, fuzzy matching, or LLM-assisted
    matching; treatment of multiple plausible matches.
-3. **Quantity validation:** missing, zero, negative, fractional, or ambiguous
+2. **Quantity validation:** missing, zero, negative, fractional, or ambiguous
    quantities, and requests containing more than one product. Proposed default:
    ask for clarification unless there is one product and a positive integer.
-4. **Insufficient stock:** stock is positive but below the requested quantity.
+3. **Insufficient stock:** stock is positive but below the requested quantity.
    Proposed default: reject without partial fulfillment and state availability.
-5. **Simulation semantics:** whether successful orders decrement stock; whether
+4. **Simulation semantics:** whether successful orders decrement stock; whether
    orders remain in memory or are written to a local file; behavior on restart.
-6. **Repeated and concurrent requests:** whether to support idempotency and how
+5. **Repeated and concurrent requests:** whether to support idempotency and how
    to prevent overselling if inventory changes.
-7. **Response language and format:** language of user-facing messages and the
+6. **Response language and format:** language of user-facing messages and the
    fields that constitute a complete confirmation.
-8. **Operational errors:** model failure, malformed catalog, and tool failure
+7. **Operational errors:** model failure, malformed catalog, and tool failure
    responses, including the corresponding HTTP status codes.
-9. **Trace destination:** collector address, protocol, and which request or
+8. **Trace destination:** collector address, protocol, and which request or
    response details should appear in traces.
 
 ## Acceptance criteria
@@ -141,6 +213,14 @@ The implementation must include tests derived from the following criteria:
 - Catalog data is read at startup, rather than reloaded for every request.
 - Every graph node has a dedicated Python class.
 - The API can be started from the repository root using Uvicorn.
+- Configuration loads the agent's own `.env` when started from the root;
+  the endpoint is derived from `OCI_REGION` and the configured model ID is
+  passed to the OCI model integration.
+- Offline authentication tests cover both `API_KEY` and `RESOURCE_PRINCIPAL`,
+  including missing credentials and unsupported modes without silent fallback.
+- Resource principal initialization does not read local user credentials.
+- Configuration tests cover missing/blank required values and
+  precedence between process environment and `.env` values.
 - Offline tests substitute the LLM and external services and do not require
   OCI credentials, paid inference, or an external collector.
 - Additional tests cover the edge cases agreed in the decisions above.
@@ -152,6 +232,14 @@ The implementation must include tests derived from the following criteria:
 
 ## Current scope
 
-This change defines the specification only. It does not implement the graph,
+This change defines the specification, demo folder, configuration template,
+and demo documentation. It does not implement the graph,
 HTTP API, tool, catalog, or tracing configuration, and does not install new
 HTTP dependencies. Implementation starts after the open details are discussed.
+
+## Configuration references
+
+- [OCI SDK configuration and API signing keys](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm)
+- [OCI Generative AI inference client](https://docs.oracle.com/en-us/iaas/tools/python/latest/api/generative_ai_inference/client/oci.generative_ai_inference.GenerativeAiInferenceClient.html)
+- Authentication parameter names were checked against the installed
+  `langchain-oci` 0.3.2 source (`OCIGenAIBase`).
