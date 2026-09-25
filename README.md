@@ -5,50 +5,70 @@
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-blue.svg)](https://docs.pytest.org/)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 
-Raccolta di demo di agenti AI basate su **NeMo Relay di NVIDIA**,
-**OCI Generative AI**, **`langchain_oci`** e **LangGraph**.
+A collection of AI agent demos built with **NVIDIA NeMo Relay**,
+**OCI Generative AI**, **`langchain_oci`**, and **LangGraph**.
 
-Il repository è nella fase iniziale: contiene le regole di sviluppo e la
-documentazione, ma non ancora demo eseguibili o codice Python.
+The repository is in its initial stage: it contains development rules and
+documentation, but no runnable demos or Python code yet.
 
-## Sviluppo spec-driven
+## Development environment
 
-Ogni demo parte da una specifica in `specs/`, scritta prima del codice.
-La specifica descrive obiettivo, requisiti, architettura, integrazioni,
-input/output, configurazione, errori attesi e criteri di accettazione.
-I test verificano tali criteri; implementazione e documentazione seguono
-la specifica e vengono aggiornate insieme quando cambia il comportamento.
+Use Python **3.11 or later** in the Conda environment **`nemo-relay-on-oci`**
+for all Python commands, dependency installation, demos, and quality checks.
 
-Le regole vincolanti per agenti e contributori sono in [AGENTS.md](AGENTS.md).
+```bash
+conda activate nemo-relay-on-oci
+python --version
+```
 
-## Requisiti prima di ogni commit e del completamento
+In non-interactive shells, select the environment explicitly:
 
-- Applicare **Black** a tutto il codice Python, inclusi i test, e verificarne
-  la formattazione.
-- Eseguire **Pylint** sul codice Python e correggere **tutti** i problemi
-  segnalati.
-- Preparare ed eseguire i test con **pytest** e **pytest-cov**: tutti i test
-  devono passare, con coverage del codice applicativo **almeno dell'80%**
-  e soglia automatica `--cov-fail-under=80`.
-- Aggiornare la documentazione interessata e il [changelog](CHANGELOG.md).
-- Controllare il diff e riportare esiti reali dei controlli e coverage.
+```bash
+conda run -n nemo-relay-on-oci python --version
+```
 
-Questi passaggi sono obbligatori prima di un commit, di un rilascio o di
-dichiarare il lavoro «fatto». Non si aggirano errori disabilitando controlli
-o abbassando la soglia di coverage.
+Do not use Conda `base`, system Python, or another environment for project
+Python work. Tool and dependency setup instructions will be added with the
+first demo.
 
-In questa fase esclusivamente documentale, i controlli Python non sono
-applicabili perché manca il codice. Con la prima demo saranno introdotti
-dipendenze, configurazione e comandi esatti per Black, Pylint e pytest.
-Da quel momento i controlli si applicheranno anche alle modifiche soltanto
-documentali.
+## Spec-driven development
 
-## Esecuzione delle demo e test
+Each demo starts with a specification in `specs/`, written before the code.
+The specification describes the objective, requirements, architecture,
+integrations, inputs/outputs, configuration, expected errors, and acceptance
+criteria. Tests verify these criteria; implementation and documentation
+follow the specification and are updated together when behavior changes.
 
-Ogni demo includerà il collegamento alla propria specifica, i prerequisiti,
-le versioni delle dipendenze, la configurazione OCI necessaria e i comandi
-di esecuzione. I test ordinari useranno simulazioni dei servizi esterni e
-non richiederanno credenziali o chiamate a pagamento; gli eventuali test di
-integrazione avranno istruzioni separate.
+All repository documentation must be written in **English**, including
+specifications, guides, changelog entries, and code documentation.
+The binding rules for agents and contributors are in [AGENTS.md](AGENTS.md).
 
-Non inserire credenziali o segreti nel repository.
+## Requirements before every commit and completion
+
+Run Python checks in the required Conda environment:
+
+- Apply **Black** to all Python code, including tests, and verify formatting.
+- Run **Pylint** on Python code and fix **every** reported issue.
+- Prepare and run tests with **pytest** and **pytest-cov**: all tests must
+  pass, with application code coverage of **at least 80%**, enforced with
+  `--cov-fail-under=80`.
+- Update affected documentation and the [changelog](CHANGELOG.md).
+- Review the diff and report actual check results and coverage.
+
+These steps are mandatory before a commit, release, or declaration that the
+work is done. Do not bypass failures by disabling checks or lowering the
+coverage threshold.
+
+At this documentation-only stage, Python checks are not applicable because
+there is no code. Dependencies, configuration, and exact commands for Black,
+Pylint, and pytest will be introduced with the first demo. From that point
+on, checks will also apply to documentation-only changes.
+
+## Running demos and tests
+
+Each demo will include a link to its specification, prerequisites, dependency
+versions, required OCI configuration, and execution commands. Regular tests
+will mock external services and will not require credentials or paid API
+calls; any integration tests will have separate instructions.
+
+Do not store credentials or secrets in the repository.

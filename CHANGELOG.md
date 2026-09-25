@@ -1,21 +1,25 @@
 # Changelog
 
-Le modifiche vengono registrate in `Unreleased` e associate a una versione
-e a una data al momento del rilascio.
+Changes are recorded under `Unreleased` and assigned a version and date
+when released.
 
 ## Unreleased
 
-### Aggiunto
+### Added
 
-- Badge nel README per Black, Pylint, pytest e Python 3.11+.
-- `AGENTS.md` con obiettivo e tecnologie delle demo, processo spec-driven
-  e controlli obbligatori prima di commit, rilascio e completamento.
-- Requisiti di formattazione con Black, analisi con Pylint senza problemi
-  irrisolti e test pytest con coverage minima dell'80% tramite pytest-cov.
-- Obbligo di aggiornare documentazione e changelog e riportare i risultati
-  effettivi delle verifiche.
+- README badges for Black, Pylint, pytest, and Python 3.11+.
+- `AGENTS.md` defining demo objectives and technologies, the spec-driven
+  workflow, and mandatory checks before commits, releases, and completion.
+- Requirements for Black formatting, Pylint with no unresolved findings,
+  and pytest tests with at least 80% coverage through pytest-cov.
+- Requirements to update documentation and the changelog and report actual
+  verification results.
+- Requirement to write all repository documentation in English.
+- Requirement to use the `nemo-relay-on-oci` Conda environment for all Python
+  work, with activation and non-interactive execution instructions.
 
-### Aggiornato
+### Changed
 
-- README con lo scopo del progetto, il processo di sviluppo, i requisiti
-  di qualità e lo stato iniziale senza codice Python.
+- README describing the project purpose, development workflow, quality
+  requirements, and initial state without Python code.
+- Translated AGENTS.md, README, and changelog into English.

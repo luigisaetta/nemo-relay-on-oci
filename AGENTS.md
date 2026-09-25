@@ -1,85 +1,116 @@
-# Istruzioni per agenti e contributori
+# Instructions for agents and contributors
 
-Queste regole si applicano a tutto il repository `nemo-relay-on-oci`.
+These rules apply to the entire `nemo-relay-on-oci` repository.
 
-## Obiettivo e tecnologie
+## Purpose and technologies
 
-Il repository raccoglie demo di agenti AI basate su:
+This repository contains AI agent demos built with:
 
-- NeMo Relay, la libreria NVIDIA;
+- NeMo Relay, the NVIDIA library;
 - OCI Generative AI;
 - `langchain_oci`;
 - LangGraph.
 
-Ogni demo deve spiegare lo scopo, le integrazioni utilizzate e come eseguirla.
-Non inventare API o compatibilità: verificarle nella documentazione ufficiale
-e dichiarare le versioni delle dipendenze utilizzate.
+Each demo must explain its purpose, integrations, and execution steps.
+Do not invent APIs or compatibility claims: verify them against official
+documentation and state the dependency versions used.
 
-## Approccio spec-driven
+## Documentation language
 
-1. Prima di implementare o modificare un comportamento, creare o aggiornare
-   la specifica corrispondente in `specs/`.
-2. Descrivere nella specifica obiettivo, requisiti, ambito ed esclusioni,
-   architettura e integrazioni, input/output, configurazione, gestione degli
-   errori e criteri di accettazione verificabili.
-3. Definire i casi di test a partire dai criteri di accettazione, inclusi
-   percorsi di errore e casi limite.
-4. Implementare quanto previsto dalla specifica e mantenere tracciabili i
-   collegamenti tra specifica, demo e test.
-5. Se cambia il comportamento richiesto, aggiornare prima la specifica,
-   poi implementazione, test e documentazione.
+All repository documentation must be written in English. This includes
+README files, specifications, guides, instructions for agents, changelog
+entries, and code documentation such as docstrings and explanatory comments.
+Write new documentation in English and keep existing documentation in English
+when updating it.
 
-Per modifiche esclusivamente documentali, mantenere coerenti i documenti
-coinvolti; non occorre una specifica di funzionalità inesistente.
+## Required Conda environment
 
-## Controlli obbligatori prima di ogni commit e del completamento
+Use the Conda environment named `nemo-relay-on-oci` for all Python work,
+including running demos, installing dependencies, formatting, linting,
+and testing. The project requires Python 3.11 or later.
 
-Prima di effettuare un commit, rilasciare modifiche o dichiarare il lavoro
-«fatto», completare tutti i seguenti passaggi:
+Activate it before running project commands:
 
-1. **Formattazione:** applicare Black a tutto il codice Python, inclusi i
-   test, e verificare che una successiva esecuzione in modalità check passi.
-2. **Analisi statica:** eseguire Pylint su tutto il codice Python, inclusi i
-   test, e correggere **tutti** i problemi segnalati. Un controllo della sola
-   sintassi non sostituisce Pylint. Il comando deve terminare con successo,
-   senza segnalazioni irrisolte.
-3. **Test e coverage:** preparare o aggiornare i test e lanciarli con pytest
-   e pytest-cov. Tutti i test devono passare e la copertura complessiva del
-   codice applicativo deve essere **almeno dell'80%**, con soglia automatica
-   `--cov-fail-under=80`. Misurare anche i moduli applicativi non importati
-   dai test; non includere i test nel denominatore della coverage.
-4. **Documentazione:** aggiornare README e documentazione interessata con
-   comportamento, configurazione, prerequisiti e istruzioni di esecuzione
-   pertinenti alle modifiche.
-5. **Changelog:** aggiornare `CHANGELOG.md`, descrivendo le modifiche nella
-   sezione `Unreleased` fino alla preparazione di una release.
-6. **Verifica finale:** controllare il diff e riportare i comandi eseguiti,
-   gli esiti e la percentuale di coverage realmente misurata.
+```bash
+conda activate nemo-relay-on-oci
+```
 
-Non abbassare la soglia di coverage, escludere codice per aggirarla,
-disabilitare controlli Pylint o saltare test per far passare i controlli.
-Se un controllo fallisce, correggere la causa e ripeterlo prima del commit
-o della dichiarazione di completamento. Se è bloccato dall'ambiente,
-segnalare il blocco senza dichiarare soddisfatti i requisiti.
+For non-interactive shells, explicitly select the environment on each command:
 
-Finché il repository contiene soltanto documentazione e nessun file Python,
-Black, Pylint, pytest e coverage non hanno codice su cui operare: indicare
-esplicitamente questa condizione nel resoconto, senza inventare esiti o
-creare test fittizi. Alla prima introduzione di codice Python configurare
-ed eseguire tutti i controlli sopra descritti. Una modifica documentale in
-un repository che contiene già codice Python non esonera dai controlli.
+```bash
+conda run -n nemo-relay-on-oci python --version
+conda run -n nemo-relay-on-oci python -m black .
+conda run -n nemo-relay-on-oci python -m black --check .
+```
 
-## Configurazione e riproducibilità
+Run Pylint, pytest, and package installation through the same environment's
+Python (`python -m pylint`, `python -m pytest`, and `python -m pip`).
+Do not fall back to Conda `base`, system Python, or another environment.
+If the required environment is missing or unusable, report the blocker.
 
-- Con la prima demo introdurre la configurazione degli strumenti e le
-  dipendenze di sviluppo, includendo `black`, `pylint`, `pytest` e
-  `pytest-cov`, e documentare i comandi esatti nel README.
-- Configurare la coverage su tutte le directory applicative. Esempio da
-  adattare alla struttura effettiva: `pytest --cov=src --cov-report=term-missing
-  --cov-fail-under=80`.
-- I test automatici ordinari devono essere riproducibili senza credenziali
-  OCI, accesso alla rete o chiamate a pagamento: simulare i servizi esterni.
-- Separare ed esplicitare prerequisiti e comandi degli eventuali test di
-  integrazione con servizi reali.
-- Non versionare credenziali, chiavi, token o altri segreti. Documentare la
-  configurazione mediante esempi privi di valori sensibili.
+## Spec-driven approach
+
+1. Before implementing or changing behavior, create or update the matching
+   specification in `specs/`.
+2. Describe the objective, requirements, scope and exclusions, architecture
+   and integrations, inputs/outputs, configuration, error handling, and
+   verifiable acceptance criteria.
+3. Define test cases from the acceptance criteria, including error paths
+   and edge cases.
+4. Implement the specification and maintain traceable links between the
+   specification, demo, and tests.
+5. When the required behavior changes, update the specification first,
+   followed by implementation, tests, and documentation.
+
+For documentation-only changes, keep the affected documents consistent;
+a specification for a nonexistent feature is not required.
+
+## Mandatory checks before every commit and completion
+
+Before committing, releasing changes, or declaring the work done, complete
+all of the following steps in the required Conda environment:
+
+1. **Formatting:** apply Black to all Python code, including tests, and
+   verify that a subsequent run in check mode passes.
+2. **Static analysis:** run Pylint on all Python code, including tests, and
+   fix **every** reported issue. A syntax-only check does not replace Pylint.
+   The command must succeed with no unresolved findings.
+3. **Tests and coverage:** prepare or update tests and run them with pytest
+   and pytest-cov. All tests must pass, and overall application code coverage
+   must be **at least 80%**, enforced with `--cov-fail-under=80`. Include
+   application modules that tests do not import in the measurement; do not
+   include tests in the coverage denominator.
+4. **Documentation:** update the README and affected documentation with
+   relevant behavior, configuration, prerequisites, and execution steps.
+5. **Changelog:** update `CHANGELOG.md`, describing changes under `Unreleased`
+   until a release is prepared.
+6. **Final verification:** review the diff and report the commands executed,
+   their outcomes, and the actual measured coverage percentage.
+
+Do not lower the coverage threshold, exclude code to bypass it, disable
+Pylint checks, or skip tests to make checks pass. If a check fails, fix the
+cause and rerun it before committing or declaring completion. If the
+environment blocks a check, report the blocker without claiming that the
+requirements have been met.
+
+While the repository contains only documentation and no Python files,
+Black, Pylint, pytest, and coverage have no code to operate on: explicitly
+report this condition without inventing results or creating dummy tests.
+When the first Python code is introduced, configure and run all checks
+above. Documentation-only changes in a repository that already contains
+Python code are not exempt from these checks.
+
+## Configuration and reproducibility
+
+- With the first demo, introduce tool configuration and development
+  dependencies, including `black`, `pylint`, `pytest`, and `pytest-cov`,
+  and document the exact commands in the README.
+- Configure coverage for all application directories. Example to adapt
+  to the actual layout:
+  `conda run -n nemo-relay-on-oci python -m pytest --cov=src --cov-report=term-missing --cov-fail-under=80`.
+- Regular automated tests must be reproducible without OCI credentials,
+  network access, or paid API calls: mock external services.
+- Separately document prerequisites and commands for any integration
+  tests that use real services.
+- Never commit credentials, keys, tokens, or other secrets. Document
+  configuration using examples without sensitive values.
