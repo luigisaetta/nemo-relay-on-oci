@@ -193,6 +193,14 @@ follow the first implementation decisions below. Credentials must not be stored 
 
 ## First implementation decisions
 
+- Optional `OCI_REASONING_EFFORT` is passed to the OCI SDK as `reasoning_effort`
+  using its uppercase values (`NONE`, `MINIMAL`, `LOW`, `MEDIUM`, `HIGH`).
+  Empty means omitted. Models rejecting function calling with active reasoning
+  can use `NONE` when supported, without changing defaults for other models.
+- Upstream failures remain HTTP 502, but OCI service rejections report the
+  upstream status and a configuration hint. Server logs record exception type
+  or OCI status/code without raw exception text, prompts, or credentials.
+  Regression tests must verify parameter forwarding and sanitized failures.
 - Match normalized product names and explicit aliases, ignoring case and repeated
   whitespace. Reject unknown or ambiguous matches without fuzzy guessing.
 - Extract a list of order items with the LLM, then require exactly one item
@@ -277,3 +285,8 @@ startup. Live OCI calls and external collector delivery are separate checks.
 
 Offline tests do not establish extraction accuracy for the deployed OCI model.
 Live inference and external collector delivery must be validated separately.
+
+A live OCI request for two keyboards reproduced an upstream 400 rejecting
+function tools with active reasoning. With `OCI_REASONING_EFFORT=NONE`, the
+complete API workflow returned HTTP 200 and `confirmed`. External collector
+delivery remains unverified.

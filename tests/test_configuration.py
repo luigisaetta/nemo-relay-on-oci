@@ -151,3 +151,43 @@ def test_relay_configuration_and_cleanup():
                 pytest.fail("Invalid endpoint was accepted")
 
     asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("effort", ["", "NONE", "LOW"])
+def test_reasoning_effort_forwarding(effort):
+    """Forward only explicitly configured reasoning parameters to OCI.
+
+    Args:
+        effort: Optional SDK reasoning effort value.
+    """
+    settings = Settings(
+        region="us-chicago-1",
+        model_id="test",
+        compartment_id="test",
+        reasoning_effort=effort,
+    )
+    with patch("demos.order_fulfillment.config.ChatOCIGenAI") as model:
+        create_extractor(settings)
+        parameters = model.call_args.kwargs["model_kwargs"]
+        if effort:
+            assert parameters["reasoning_effort"] == effort
+        else:
+            assert "reasoning_effort" not in parameters
+
+
+def test_reasoning_effort_environment(tmp_path, monkeypatch):
+    """Normalize the setting to OCI SDK enums and reject unsupported values.
+
+    Args:
+        tmp_path: Temporary configuration directory.
+        monkeypatch: Isolated process environment overrides.
+    """
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "OCI_REGION=us-chicago-1\nMODEL_ID=test\nOCI_COMPARTMENT_ID=test\n"
+    )
+    monkeypatch.setenv("OCI_REASONING_EFFORT", " none ")
+    assert load_settings(env_file).reasoning_effort == "NONE"
+    monkeypatch.setenv("OCI_REASONING_EFFORT", "unsupported")
+    with pytest.raises(ValidationError):
+        load_settings(env_file)

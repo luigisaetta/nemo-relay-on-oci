@@ -1,6 +1,7 @@
 """FastAPI application factory; start with Uvicorn from the repository root."""
 
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI, HTTPException
 from langchain_core.runnables import Runnable
@@ -18,6 +19,8 @@ from demos.order_fulfillment.graph import build_graph
 from demos.order_fulfillment.inventory import Inventory
 from demos.order_fulfillment.models import OrderRequest, OrderResponse
 from demos.order_fulfillment.telemetry import relay_lifespan
+
+LOGGER = logging.getLogger(__name__)
 
 
 def create_app(
@@ -86,7 +89,17 @@ def create_app(
                     "run_name": "order_fulfillment",
                 },
             )
-        except (ServiceError, RequestException, TimeoutError) as error:
+        except ServiceError as error:
+            LOGGER.error(
+                "OCI model request failed: status=%s code=%s", error.status, error.code
+            )
+            raise HTTPException(
+                502,
+                f"OCI rejected the model request (upstream status {error.status}). "
+                "Check model settings, structured output, reasoning effort, and OCI access.",
+            ) from error
+        except (RequestException, TimeoutError) as error:
+            LOGGER.error("Model transport failed: type=%s", type(error).__name__)
             raise HTTPException(
                 502, "The model service is unavailable. Please retry later."
             ) from error

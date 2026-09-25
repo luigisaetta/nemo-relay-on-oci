@@ -25,6 +25,7 @@ class Settings(BaseModel):
     output_method: Literal["function_calling", "json_schema", "json_mode"] = (
         "function_calling"
     )
+    reasoning_effort: Literal["", "NONE", "MINIMAL", "LOW", "MEDIUM", "HIGH"] = ""
     traces_endpoint: str = ""
     service_name: Name = "order-fulfillment"
 
@@ -55,12 +56,14 @@ def load_settings(env_file: Path = AGENT_DIR / ".env") -> Settings:
         "config_file": "OCI_CONFIG_FILE",
         "config_profile": "OCI_CONFIG_PROFILE",
         "output_method": "OCI_STRUCTURED_OUTPUT_METHOD",
+        "reasoning_effort": "OCI_REASONING_EFFORT",
         "traces_endpoint": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
         "service_name": "OTEL_SERVICE_NAME",
     }
-    return Settings.model_validate(
-        {name: values[key] for name, key in fields.items() if key in values}
-    )
+    selected = {name: values[key] for name, key in fields.items() if key in values}
+    if isinstance(selected.get("reasoning_effort"), str):
+        selected["reasoning_effort"] = selected["reasoning_effort"].strip().upper()
+    return Settings.model_validate(selected)
 
 
 def create_extractor(settings: Settings):
@@ -79,6 +82,8 @@ def create_extractor(settings: Settings):
         "auth_type": settings.auth_type,
         "model_kwargs": {"temperature": 0},
     }
+    if settings.reasoning_effort:
+        options["model_kwargs"]["reasoning_effort"] = settings.reasoning_effort
     if settings.auth_type == "API_KEY":
         options.update(
             auth_file_location=str(Path(settings.config_file).expanduser()),

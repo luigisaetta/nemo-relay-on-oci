@@ -51,6 +51,7 @@ The copy command preserves an existing `.env`. Edit the local file:
 | `OCI_CONFIG_FILE` | `~/.oci/config` | Local SDK configuration; API_KEY only |
 | `OCI_CONFIG_PROFILE` | `DEFAULT` | Local SDK profile; API_KEY only |
 | `OCI_STRUCTURED_OUTPUT_METHOD` | `function_calling` | Model-supported method: `function_calling`, `json_schema`, or `json_mode` |
+| `OCI_REASONING_EFFORT` | Empty; omitted | Optional model-dependent reasoning setting: `NONE`, `MINIMAL`, `LOW`, `MEDIUM`, `HIGH`; lowercase values are normalized |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Empty; export disabled | Collector HTTP/protobuf trace URL, such as `http://localhost:4318/v1/traces` |
 | `OTEL_SERVICE_NAME` | `order-fulfillment` | Trace service identity |
 
@@ -105,6 +106,19 @@ internal failures return 500. `/health` checks local readiness, not inference.
 Model extraction quality and structured-output support depend on the selected
 OCI model; offline tests cannot verify those capabilities.
 
+### Troubleshooting a 502 response
+
+Read the JSON `detail` response as well as the server log. OCI rejections log
+the upstream status and error code; transport failures log the exception type.
+Raw provider messages, prompts, and credentials are not logged by this handler.
+
+If the model rejects function tools with active reasoning, set
+`OCI_REASONING_EFFORT=NONE` in this agent's `.env` and restart the server.
+This resolved the OCI 400 rejection observed with the configured model; it is
+not a universal requirement for all models. Leave the setting empty for models
+that do not accept it. OCI's SDK expects uppercase reasoning enum values.
+See the [OCI request reference](https://docs.oracle.com/en-us/iaas/tools/python/latest/api/generative_ai_inference/models/oci.generative_ai_inference.models.GenericChatRequest.html).
+
 ## NeMo Relay behavior
 
 The LangGraph callback observes graph execution. Explicit typed Relay scopes
@@ -138,9 +152,11 @@ configuration, both authentication wiring paths, and actual Relay scope events.
 Cloud calls are substituted; exporter configuration and cleanup are verified
 without a running collector. The coverage threshold includes all `demos/` code.
 
-Local configuration startup and `/health` have been checked without inference.
-Live OCI extraction and trace delivery to an external collector remain separate
-integration checks: run the curl request and inspect the collector/backend for
-the graph, extraction, and registration scopes.
+Local configuration startup and `/health` have been checked. A live OCI request
+for two keyboards returned HTTP 200 and `confirmed` after setting reasoning
+effort to `NONE` for the configured model. This validates that sample and model,
+not extraction accuracy across all inputs. External collector delivery remains
+unverified: inspect the collector/backend for graph, extraction, and registration
+scopes when running a sample order.
 
 Return to the [demo index](../../README.md#demos).

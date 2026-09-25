@@ -5,6 +5,14 @@ when released.
 
 ## Unreleased
 
+### Fixed
+
+- Added optional `OCI_REASONING_EFFORT` configuration to resolve model rejection
+  of function calling with active reasoning; normalize values to OCI SDK enums.
+- Replaced generic service-unavailable messages for OCI rejections with an
+  upstream status and configuration hint. Added sanitized server diagnostics
+  and regression tests for parameter forwarding and error handling.
+
 ### Added
 
 - Executable `demos/order_fulfillment/start.sh` for root-level server startup

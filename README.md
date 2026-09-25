@@ -18,7 +18,7 @@ listed as planned are not implemented or verified yet.
 
 | Demo | Status | Notes |
 | --- | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | Implemented; offline tests and local configuration startup verified | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay: graph callbacks, typed LLM/tool scopes, and configurable native OTLP export. Relay events are tested locally; live OCI inference and external collector delivery remain unverified. |
+| [Order fulfillment](demos/order_fulfillment/README.md) | Implemented; offline tests and a live OCI order verified | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay: graph callbacks, typed LLM/tool scopes, and configurable native OTLP export. Relay events are tested locally; external collector delivery remains unverified. |
 
 ## Development environment
 

@@ -11,6 +11,7 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.runnables import RunnableLambda
 from langchain_core.output_parsers import PydanticOutputParser
 from nemo_relay.integrations.langgraph import NemoRelayCallbackHandler
+from oci.exceptions import ServiceError
 
 from demos.order_fulfillment.api import create_app
 from demos.order_fulfillment.config import AGENT_DIR, Settings
@@ -182,8 +183,12 @@ def test_api_success_and_validation():
         assert response.json()["order_id"]
 
 
-def test_api_model_failure():
-    """Return a sanitized upstream error and never register on timeout."""
+def test_api_model_failure(caplog):
+    """Return a sanitized upstream error and never register on timeout.
+
+    Args:
+        caplog: Captured server log records.
+    """
     inventory = Inventory.load(AGENT_DIR / "catalog.json")
     app = create_app(
         sample_settings(),
@@ -194,6 +199,29 @@ def test_api_model_failure():
         response = client.post("/orders", json={"request": "2 keyboards"})
         assert response.status_code == 502
         assert "secret" not in response.text
+        assert "TimeoutError" in caplog.text
+        assert "secret" not in caplog.text
+    assert not inventory.orders
+
+
+def test_api_oci_rejection(caplog):
+    """Expose an actionable OCI status without logging raw provider content.
+
+    Args:
+        caplog: Captured server log records.
+    """
+    inventory = Inventory.load(AGENT_DIR / "catalog.json")
+    error = ServiceError(400, "InvalidParameter", {}, "private provider message")
+    app = create_app(
+        sample_settings(), RunnableLambda(Mock(side_effect=error)), inventory
+    )
+    with TestClient(app) as client:
+        response = client.post("/orders", json={"request": "2 keyboards"})
+    assert response.status_code == 502
+    assert "upstream status 400" in response.json()["detail"]
+    assert "reasoning effort" in response.json()["detail"]
+    assert "status=400 code=InvalidParameter" in caplog.text
+    assert "private provider message" not in caplog.text + response.text
     assert not inventory.orders
 
 
