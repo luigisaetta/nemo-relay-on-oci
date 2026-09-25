@@ -118,6 +118,16 @@ to documentation-only changes.
 
 ## Running demos and tests
 
+Each agent will have its own folder under `demos/` and must be runnable from
+the repository root.
+
+The first planned demo is an order fulfillment agent exposed through FastAPI
+and Uvicorn, using a LangGraph workflow to extract a product and quantity,
+check a JSON catalog, and simulate order registration through a tool.
+See the [draft specification](specs/002-order-fulfillment.md) for confirmed
+requirements, the proposed graph, and decisions to discuss before implementation.
+This demo is not implemented yet.
+
 Each demo will include a link to its specification, prerequisites, dependency
 versions, required OCI configuration, and execution commands. Regular tests
 will mock external services and will not require credentials or paid API

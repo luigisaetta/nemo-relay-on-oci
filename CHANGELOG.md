@@ -7,6 +7,11 @@ when released.
 
 ### Added
 
+- Draft specification for the order fulfillment demo, including confirmed
+  requirements, a proposed class-based LangGraph workflow, HTTP interface,
+  acceptance criteria, and open implementation decisions.
+- Repository rule requiring a dedicated folder per agent under `demos/`
+  and startup commands runnable from the repository root.
 - Dependency and observability specification with offline acceptance checks.
 - Pinned runtime and development requirements and resolved constraints for
   the `nemo-relay-on-oci` Conda environment.

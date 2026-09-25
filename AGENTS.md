@@ -50,6 +50,10 @@ If the required environment is missing or unusable, report the blocker.
 
 ## Spec-driven approach
 
+Each agent must have its own dedicated folder under `demos/`. Every agent
+must be runnable from the repository root; document the exact startup command
+without requiring users to change into the demo folder.
+
 1. Before implementing or changing behavior, create or update the matching
    specification in `specs/`.
 2. Describe the objective, requirements, scope and exclusions, architecture
