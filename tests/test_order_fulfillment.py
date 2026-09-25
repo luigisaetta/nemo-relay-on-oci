@@ -277,13 +277,25 @@ def test_api_trace_has_one_root_with_full_payloads():
         event.name: event
         for event in events
         if event.scope_category == "start"
-        and event.name in {"order_fulfillment", "extract_order_llm", "register_order"}
+        and event.name
+        in {
+            "order_fulfillment",
+            "order_fulfillment_graph",
+            "extract_order_llm",
+            "register_order",
+        }
     }
     ends = {
         event.name: event
         for event in events
         if event.scope_category == "end"
-        and event.name in {"order_fulfillment", "extract_order_llm", "register_order"}
+        and event.name
+        in {
+            "order_fulfillment",
+            "order_fulfillment_graph",
+            "extract_order_llm",
+            "register_order",
+        }
     }
     assert starts["order_fulfillment"].data == {"request": "2 keyboards"}
     assert ends["order_fulfillment"].data["status"] == "confirmed"
@@ -303,7 +315,11 @@ def test_api_trace_has_one_root_with_full_payloads():
         if event.scope_category == "start"
     }
     root_uuid = starts["order_fulfillment"].uuid
-    for child_name in ("extract_order_llm", "register_order"):
+    for child_name in (
+        "order_fulfillment_graph",
+        "extract_order_llm",
+        "register_order",
+    ):
         parent_uuid = starts[child_name].parent_uuid
         while parent_uuid != root_uuid:
             parent_uuid = parent_by_scope[parent_uuid]

@@ -115,7 +115,7 @@ def create_app(
                     {"request": body.request},
                     config={
                         "callbacks": [NemoRelayCallbackHandler()],
-                        "run_name": "order_fulfillment",
+                        "run_name": "order_fulfillment_graph",
                     },
                 )
             except ServiceError as error:

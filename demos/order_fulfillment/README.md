@@ -141,8 +141,9 @@ See the [OCI request reference](https://docs.oracle.com/en-us/iaas/tools/python/
 ## NeMo Relay behavior
 
 Each `POST /orders` creates one `order_fulfillment` agent root scope. LangGraph
-nodes, the explicit LLM scope, and the registration-tool scope are descendants
-of that root, so Langfuse renders one trace hierarchy per order. Relay retains
+execution is the direct `order_fulfillment_graph` child; its nodes, the explicit
+LLM scope, and the registration-tool scope are descendants of that root, so
+Langfuse renders one unambiguous trace hierarchy per order. Relay retains
 the complete LLM prompt/message history and extraction output, plus the root
 request/response and tool arguments/result. This demo intentionally exports
 these payloads: use synthetic orders and never submit secrets or sensitive

@@ -12,6 +12,8 @@ when released.
 - Default the Langfuse Cloud template to v4 real-time ingestion.
 - Record successful direct Langfuse Cloud delivery verification in the demo
   documentation.
+- Distinguish the HTTP trace root from its LangGraph child with
+  `order_fulfillment` and `order_fulfillment_graph` names.
 - Improved extraction instructions to remove subjective adjectives, normalize
   plurals and clear typos, and preserve meaningful product features without
   providing the catalog to the LLM.

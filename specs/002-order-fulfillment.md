@@ -228,7 +228,9 @@ and close it with the serialized API response. The LLM scope must retain the
 complete prompt/messages and validated extraction output; the tool scope must
 retain its arguments and result. The observability component enables full
 payload retention. Langfuse v4 Cloud uses ingestion version `4` so new traces
-appear in real time.
+appear in real time. The root is named `order_fulfillment`; its direct LangGraph
+child is named `order_fulfillment_graph` to distinguish the HTTP request from
+the graph execution.
 
 Trace configuration will follow the pinned Relay version described in
 [specification 001](001-dependencies-and-observability.md). Collector endpoint, service naming, payload capture, and shutdown behavior
