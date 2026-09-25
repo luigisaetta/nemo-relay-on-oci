@@ -200,8 +200,8 @@ without a running collector. The coverage threshold includes all `demos/` code.
 Local configuration startup and `/health` have been checked. A live OCI request
 for two keyboards returned HTTP 200 and `confirmed` after setting reasoning
 effort to `NONE` for the configured model. This validates that sample and model,
-not extraction accuracy across all inputs. Remote Langfuse delivery remains
-unverified until URL and keys are supplied: inspect Langfuse for graph, extraction, and registration
-scopes when running a sample order.
+not extraction accuracy across all inputs. Remote Langfuse delivery has been
+verified with configured project credentials using a synthetic order trace with
+nested graph, LLM, and registration-tool scopes.
 
 Return to the [demo index](../../README.md#demos).

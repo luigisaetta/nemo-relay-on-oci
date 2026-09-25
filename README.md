@@ -13,12 +13,12 @@ pinned dependencies, and offline acceptance tests.
 
 ## Demos
 
-This table is updated as demos are added or developed. Relay capabilities
-listed as planned are not implemented or verified yet.
+This table is updated as demos are added or developed. It lists the functional
+capabilities demonstrated by each demo.
 
-| Demo | Status | Notes |
-| --- | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | Implemented; offline tests and a live OCI order verified | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay: graph callbacks, typed LLM/tool scopes, and configurable native OTLP export. Relay events are tested locally; direct export to remote Langfuse is configured; remote delivery awaits project credentials. |
+| Demo | Functionality |
+| --- | --- |
+| [Order fulfillment](demos/order_fulfillment/README.md) | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay emits one nested trace per order, including graph callbacks, LLM prompts and outputs, and tool inputs and results, exported directly to Langfuse through OTLP. |
 
 ## Development environment
 
@@ -91,8 +91,8 @@ The agent builds the OTLP trace URL and endpoint-specific Basic authentication
 header automatically. Each order is exported as a single hierarchy with its
 request/response, complete LLM prompt/message history, and tool input/output.
 See the [demo setup](demos/order_fulfillment/README.md) for data-handling
-considerations. Native exporter configuration and offline behavior are tested;
-remote delivery awaits the user's Langfuse URL and project credentials.
+considerations. Native exporter configuration and remote Langfuse delivery have
+been exercised with configured project credentials.
 
 ## Spec-driven development
 

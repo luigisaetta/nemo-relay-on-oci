@@ -10,6 +10,8 @@ when released.
 - Export each order as one nested Langfuse trace and retain the root, LLM, and
   tool input/output payloads, including complete LLM prompt history.
 - Default the Langfuse Cloud template to v4 real-time ingestion.
+- Record successful direct Langfuse Cloud delivery verification in the demo
+  documentation.
 - Improved extraction instructions to remove subjective adjectives, normalize
   plurals and clear typos, and preserve meaningful product features without
   providing the catalog to the LLM.
