@@ -141,14 +141,15 @@ See the [OCI request reference](https://docs.oracle.com/en-us/iaas/tools/python/
 
 ## NeMo Relay behavior
 
-Each `POST /orders` creates one `order_fulfillment` agent root scope. LangGraph
-execution is the direct `order_fulfillment_graph` child; its nodes, the explicit
-LLM scope, and the registration-tool scope are descendants of that root, so
-Langfuse renders one unambiguous trace hierarchy per order. Relay retains
-the complete LLM prompt/message history and extraction output, plus the root
-request/response and tool arguments/result. This demo intentionally exports
-these payloads: use synthetic orders and never submit secrets or sensitive
-customer data.
+Each `POST /orders` creates one `order_fulfillment` agent root scope. Its child
+spans use domain names rather than LangGraph implementation names:
+`extract_order`, `match_catalog_product`, `check_inventory_availability`,
+`register_order`, and `build_order_response`. Thus Langfuse renders one
+readable hierarchy per order without parser, runnable, or router noise. Relay
+retains the complete LLM prompt/message history and extraction output, plus the
+root request/response and tool arguments/result. This demo intentionally
+exports these payloads: use synthetic orders and never submit secrets or
+sensitive customer data.
 
 ### Connect directly to remote Langfuse
 

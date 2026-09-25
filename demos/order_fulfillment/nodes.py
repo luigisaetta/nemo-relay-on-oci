@@ -15,7 +15,12 @@ from langchain_core.tools import BaseTool
 from pydantic import ValidationError
 
 from demos.order_fulfillment.inventory import Inventory
-from demos.order_fulfillment.models import ExtractedOrder, OrderResponse, OrderState
+from demos.order_fulfillment.models import (
+    ExtractedOrder,
+    OrderResponse,
+    OrderState,
+    Product,
+)
 from demos.order_fulfillment.telemetry import trace_scope
 
 EXTRACTION_PROMPT = f"""Extract order items from the user's text; do not place orders.
@@ -200,10 +205,26 @@ class MatchProductNode:
         Returns:
             Matched product or a no-match status.
         """
-        matches = self.inventory.match(state["item"].product)
-        if len(matches) != 1:
-            return {"status": "no_match"}
-        return {"product": matches[0]}
+        requested_product = state["item"].product
+        with trace_scope(
+            "match_catalog_product",
+            nemo_relay.ScopeType.Agent,
+            {"requested_product": requested_product},
+        ) as trace:
+            matches = self.inventory.match(requested_product)
+            if len(matches) != 1:
+                result = {"status": "no_match"}
+            else:
+                result = {"product": matches[0]}
+            trace["output"] = {
+                key: (
+                    value.model_dump(mode="json")
+                    if isinstance(value, Product)
+                    else value
+                )
+                for key, value in result.items()
+            }
+            return result
 
 
 @dataclass
@@ -225,12 +246,25 @@ class CheckAvailabilityNode:
         Returns:
             Stock snapshot and, when needed, a rejection status.
         """
-        available = self.inventory.available(state["product"].product_id)
-        if available == 0:
-            return {"status": "out_of_stock", "available": available}
-        if available < state["item"].quantity:
-            return {"status": "insufficient_stock", "available": available}
-        return {"available": available}
+        product = state["product"]
+        requested_quantity = state["item"].quantity
+        with trace_scope(
+            "check_inventory_availability",
+            nemo_relay.ScopeType.Agent,
+            {
+                "product_id": product.product_id,
+                "requested_quantity": requested_quantity,
+            },
+        ) as trace:
+            available = self.inventory.available(product.product_id)
+            if available == 0:
+                result = {"status": "out_of_stock", "available": available}
+            elif available < requested_quantity:
+                result = {"status": "insufficient_stock", "available": available}
+            else:
+                result = {"available": available}
+            trace["output"] = result
+            return result
 
 
 @dataclass
@@ -293,13 +327,19 @@ class BuildResponseNode:
                 f"Order {state.get('order_id')} registered successfully in the simulated system."
             ),
         }
-        response = OrderResponse(
-            status=state["status"],
-            request=state["request"],
-            message=messages[state["status"]],
-            product=product.name if product else None,
-            quantity=item.quantity if item else None,
-            order_id=state.get("order_id"),
-            available=state.get("available"),
-        )
-        return {"response": response}
+        with trace_scope(
+            "build_order_response",
+            nemo_relay.ScopeType.Agent,
+            {"status": state["status"]},
+        ) as trace:
+            response = OrderResponse(
+                status=state["status"],
+                request=state["request"],
+                message=messages[state["status"]],
+                product=product.name if product else None,
+                quantity=item.quantity if item else None,
+                order_id=state.get("order_id"),
+                available=state.get("available"),
+            )
+            trace["output"] = response.model_dump(mode="json")
+            return {"response": response}

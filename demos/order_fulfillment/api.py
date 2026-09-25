@@ -8,7 +8,6 @@ import warnings
 from fastapi import FastAPI, HTTPException
 from langchain_core.runnables import Runnable
 import nemo_relay
-from nemo_relay.integrations.langgraph import NemoRelayCallbackHandler
 from oci.exceptions import ServiceError
 from requests.exceptions import RequestException
 
@@ -112,14 +111,7 @@ def create_app(
             "order_fulfillment", nemo_relay.ScopeType.Agent, {"request": body.request}
         ) as trace:
             try:
-                # A fresh callback keeps trace bookkeeping isolated between requests.
-                result = app.state.graph.invoke(
-                    {"request": body.request},
-                    config={
-                        "callbacks": [NemoRelayCallbackHandler()],
-                        "run_name": "order_fulfillment_graph",
-                    },
-                )
+                result = app.state.graph.invoke({"request": body.request})
             except ServiceError as error:
                 LOGGER.error(
                     "OCI model request failed: status=%s code=%s",

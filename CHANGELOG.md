@@ -7,6 +7,9 @@ when released.
 
 ### Fixed
 
+- Replace automatic LangGraph callback spans with explicit, domain-named Relay
+  scopes so Langfuse traces show readable order-processing operations rather
+  than framework internals.
 - Export OCI extraction token usage and optional Relay-estimated model cost to
   Langfuse through a validated local pricing catalog, using Langfuse's
   `gen_ai.usage.cost` attribute for the displayed generation cost.

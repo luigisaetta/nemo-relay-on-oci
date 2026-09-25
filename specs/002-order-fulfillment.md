@@ -219,18 +219,20 @@ See [Langfuse OTLP documentation](https://langfuse.com/integrations/native/opent
 The intended trace path is:
 
 ```text
-HTTP order request root -> LangGraph nodes, LLM calls, and registration tool
+HTTP order request root -> named domain steps, LLM call, and registration tool
     -> NeMo Relay native OTLP exporter -> remote Langfuse
 ```
 
 The application must create the root `Agent` scope before invoking the graph
-and close it with the serialized API response. The LLM scope must retain the
-complete prompt/messages and validated extraction output; the tool scope must
-retain its arguments and result. The observability component enables full
-payload retention. Langfuse v4 Cloud uses ingestion version `4` so new traces
-appear in real time. The root is named `order_fulfillment`; its direct LangGraph
-child is named `order_fulfillment_graph` to distinguish the HTTP request from
-the graph execution.
+and close it with the serialized API response. It must use explicit,
+human-readable Relay scopes for the domain operations: `extract_order`,
+`match_catalog_product`, `check_inventory_availability`, `register_order`, and
+`build_order_response`. The LLM scope must retain the complete prompt/messages
+and validated extraction output; the tool scope must retain its arguments and
+result. The observability component enables full payload retention. Langfuse
+v4 Cloud uses ingestion version `4` so new traces appear in real time. Avoid
+the automatic LangGraph callback because it exposes framework implementation
+names (such as parsers and runnable sequences) instead of domain operations.
 
 Trace configuration will follow the pinned Relay version described in
 [specification 001](001-dependencies-and-observability.md). Collector endpoint, service naming, payload capture, and shutdown behavior
@@ -287,10 +289,11 @@ LLM token usage and optional Relay-estimated pricing are specified separately in
 - Use the LLM's structured output with a configurable `OCI_STRUCTURED_OUTPUT_METHOD`
   (`function_calling` by default; `json_schema` and `json_mode` also supported).
   Actual model support must be checked in live validation.
-- Relay's LangGraph callback observes chains and nodes. An explicit root agent
-  scope wraps every request, with explicit LLM and tool child scopes retaining
-  their semantic payloads. This instrumentation does not claim token usage or
-  native provider payload metrics.
+- Explicit Relay scopes observe the graph's domain nodes. An explicit root
+  agent scope wraps every request, with named LLM, catalog-matching,
+  availability, registration-tool, and response-building child scopes retaining
+  semantic payloads. This instrumentation does not claim token usage or native
+  provider payload metrics beyond those specified in specification 003.
 
 ## Acceptance criteria
 
@@ -317,9 +320,9 @@ The implementation must include tests derived from the following criteria:
   precedence between process environment and `.env` values.
 - Offline tests substitute the LLM and external services and do not require
   OCI credentials, paid inference, or an external collector.
-- One offline trace test verifies a root agent span, descendant LLM/tool spans,
-  and populated request, prompt/history, extraction, tool, and final-response
-  payloads.
+- One offline trace test verifies a root agent span and the named descendant
+  domain spans, with populated request, prompt/history, extraction, catalog,
+  availability, tool, and final-response payloads.
 - Additional tests cover the edge cases agreed in the decisions above.
 - Black formatting and Pylint pass with no unresolved findings; pytest passes
   with at least 80% application coverage, including all application modules.

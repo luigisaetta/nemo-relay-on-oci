@@ -11,7 +11,6 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.output_parsers import PydanticOutputParser
-from nemo_relay.integrations.langgraph import NemoRelayCallbackHandler
 from oci.exceptions import ServiceError
 
 from demos.order_fulfillment.api import create_app
@@ -258,8 +257,8 @@ def test_api_oci_rejection(caplog):
     assert not inventory.orders
 
 
-def test_relay_scopes_include_nodes_model_and_tool():
-    """Observe real Relay events for graph nodes and explicit model/tool scopes."""
+def test_relay_scopes_use_readable_domain_names():
+    """Observe named Relay events without LangGraph framework internals."""
     names = []
     nemo_relay.subscribers.register(
         "test-order-scopes", lambda event: names.append(event.name)
@@ -270,20 +269,18 @@ def test_relay_scopes_include_nodes_model_and_tool():
             Inventory.load(AGENT_DIR / "catalog.json"),
             "test",
         )
-        graph.invoke(
-            {"request": "2 keyboards"},
-            config={"callbacks": [NemoRelayCallbackHandler()]},
-        )
+        graph.invoke({"request": "2 keyboards"})
         nemo_relay.subscribers.flush()
         assert {
-            "extract",
-            "match",
-            "availability",
-            "register",
-            "respond",
             "extract_order",
+            "match_catalog_product",
+            "check_inventory_availability",
             "register_order",
+            "build_order_response",
         }.issubset(set(names))
+        assert not {"RunnableSequence", "PydanticToolsParser", "route_outcome"} & set(
+            names
+        )
     finally:
         nemo_relay.subscribers.deregister("test-order-scopes")
 
@@ -314,9 +311,11 @@ def test_api_trace_has_one_root_with_full_payloads():
         and event.name
         in {
             "order_fulfillment",
-            "order_fulfillment_graph",
             "extract_order",
+            "match_catalog_product",
+            "check_inventory_availability",
             "register_order",
+            "build_order_response",
         }
     }
     ends = {
@@ -326,9 +325,11 @@ def test_api_trace_has_one_root_with_full_payloads():
         and event.name
         in {
             "order_fulfillment",
-            "order_fulfillment_graph",
             "extract_order",
+            "match_catalog_product",
+            "check_inventory_availability",
             "register_order",
+            "build_order_response",
         }
     }
     assert starts["order_fulfillment"].data == {"request": "2 keyboards"}
@@ -342,6 +343,14 @@ def test_api_trace_has_one_root_with_full_payloads():
         "arguments": {"product_id": "keyboard", "quantity": 2}
     }
     assert ends["register_order"].data["status"] == "confirmed"
+    assert starts["match_catalog_product"].data == {"requested_product": "keyboard"}
+    assert ends["match_catalog_product"].data["product"]["product_id"] == "keyboard"
+    assert starts["check_inventory_availability"].data == {
+        "product_id": "keyboard",
+        "requested_quantity": 2,
+    }
+    assert ends["check_inventory_availability"].data == {"available": 10}
+    assert ends["build_order_response"].data["status"] == "confirmed"
 
     parent_by_scope = {
         event.uuid: event.parent_uuid
@@ -350,9 +359,11 @@ def test_api_trace_has_one_root_with_full_payloads():
     }
     root_uuid = starts["order_fulfillment"].uuid
     for child_name in (
-        "order_fulfillment_graph",
         "extract_order",
+        "match_catalog_product",
+        "check_inventory_availability",
         "register_order",
+        "build_order_response",
     ):
         parent_uuid = starts[child_name].parent_uuid
         while parent_uuid != root_uuid:
