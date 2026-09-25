@@ -28,6 +28,7 @@ class Settings(BaseModel):
     reasoning_effort: Literal["", "NONE", "MINIMAL", "LOW", "MEDIUM", "HIGH"] = ""
     traces_endpoint: str = ""
     service_name: Name = "order-fulfillment"
+    model_pricing_file: str = ""
     langfuse_base_url: str = ""
     langfuse_public_key: SecretStr = SecretStr("")
     langfuse_secret_key: SecretStr = SecretStr("")
@@ -63,6 +64,7 @@ def load_settings(env_file: Path = AGENT_DIR / ".env") -> Settings:
         "reasoning_effort": "OCI_REASONING_EFFORT",
         "traces_endpoint": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
         "service_name": "OTEL_SERVICE_NAME",
+        "model_pricing_file": "MODEL_PRICING_FILE",
         "langfuse_base_url": "LANGFUSE_BASE_URL",
         "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
         "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
@@ -98,4 +100,6 @@ def create_extractor(settings: Settings):
             auth_profile=settings.config_profile,
         )
     model = ChatOCIGenAI(**options)
-    return model.with_structured_output(ExtractedOrder, method=settings.output_method)
+    return model.with_structured_output(
+        ExtractedOrder, method=settings.output_method, include_raw=True
+    )

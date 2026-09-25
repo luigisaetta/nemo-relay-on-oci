@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from demos.order_fulfillment.config import Settings, create_extractor, load_settings
 from demos.order_fulfillment.inventory import Inventory
+from demos.order_fulfillment.models import ExtractedOrder
 from demos.order_fulfillment.telemetry import relay_lifespan
 
 
@@ -59,7 +60,9 @@ def test_model_authentication(auth_type):
         assert options["service_endpoint"] == settings.endpoint
         assert ("auth_file_location" in options) == (auth_type == "API_KEY")
         assert ("auth_profile" in options) == (auth_type == "API_KEY")
-        model.return_value.with_structured_output.assert_called_once()
+        model.return_value.with_structured_output.assert_called_once_with(
+            ExtractedOrder, method=settings.output_method, include_raw=True
+        )
     with patch(
         "demos.order_fulfillment.config.ChatOCIGenAI", side_effect=ValueError("auth")
     ):

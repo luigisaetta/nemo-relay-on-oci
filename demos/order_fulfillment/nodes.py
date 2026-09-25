@@ -1,10 +1,15 @@
 """Single-purpose callable nodes for the fulfillment graph."""
 
 from dataclasses import dataclass
+import json
 
 import nemo_relay
 from langchain_core.exceptions import OutputParserException
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import (
+    HumanMessage,
+    SystemMessage,
+    convert_to_openai_messages,
+)
 from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_core.tools import BaseTool
 from pydantic import ValidationError
@@ -50,15 +55,71 @@ Return JSON matching this schema: {ExtractedOrder.model_json_schema()}
 """
 
 
+def usage_payload(raw_response: object) -> dict[str, int] | None:
+    """Convert optional LangChain token metadata to OpenAI usage fields.
+
+    Args:
+        raw_response: Raw `AIMessage` returned by structured output.
+
+    Returns:
+        OpenAI-compatible token usage, or `None` when metadata is unavailable.
+    """
+    usage = getattr(raw_response, "usage_metadata", None)
+    if not isinstance(usage, dict):
+        return None
+    input_tokens = usage.get("input_tokens")
+    output_tokens = usage.get("output_tokens")
+    total_tokens = usage.get("total_tokens")
+    if not all(
+        isinstance(value, int) and not isinstance(value, bool)
+        for value in (input_tokens, output_tokens, total_tokens)
+    ):
+        return None
+    return {
+        "prompt_tokens": input_tokens,
+        "completion_tokens": output_tokens,
+        "total_tokens": total_tokens,
+    }
+
+
+def openai_response(
+    model_id: str, raw_response: object, parsed: object
+) -> dict[str, object]:
+    """Build a minimal OpenAI Chat completion for Relay's response codec.
+
+    Args:
+        model_id: OCI model identifier used for pricing lookup.
+        raw_response: Raw `AIMessage` returned by the OCI runnable.
+        parsed: Parsed structured-output value, if available.
+
+    Returns:
+        JSON-compatible completion response with optional token usage.
+    """
+    content = getattr(raw_response, "content", "")
+    if isinstance(parsed, ExtractedOrder):
+        content = json.dumps(parsed.model_dump(mode="json"))
+    elif not isinstance(content, str):
+        content = json.dumps(content)
+    response: dict[str, object] = {
+        "model": model_id,
+        "choices": [{"message": {"role": "assistant", "content": content}}],
+    }
+    if usage := usage_payload(raw_response):
+        response["usage"] = usage
+    return response
+
+
 @dataclass
 class ExtractRequestNode:
     """Extract structured data with the injected LLM runnable.
 
     Attributes:
         extractor: Structured-output model, replaceable in offline tests.
+        model_id: OCI model identifier used for Relay tracing and pricing.
     """
 
     extractor: Runnable
+    model_id: str
 
     def __call__(self, state: OrderState, config: RunnableConfig) -> dict:
         """Extract exactly one valid order item.
@@ -71,19 +132,51 @@ class ExtractRequestNode:
             Validated item or an invalid-request status.
         """
         messages = [SystemMessage(EXTRACTION_PROMPT), HumanMessage(state["request"])]
+        relay_request = nemo_relay.LLMRequest(
+            {},
+            {
+                "model": self.model_id,
+                "messages": convert_to_openai_messages(messages),
+            },
+        )
+        handle = nemo_relay.llm.call(
+            "extract_order", relay_request, model_name=self.model_id
+        )
         try:
-            # Relay's graph callback covers chains; this scope covers the LLM boundary.
-            with trace_scope(
-                "extract_order_llm",
-                nemo_relay.ScopeType.Llm,
-                {"messages": [message.model_dump(mode="json") for message in messages]},
-            ) as trace:
-                extracted = self.extractor.invoke(messages, config=config)
-                result = ExtractedOrder.model_validate(extracted)
-                trace["output"] = result.model_dump(mode="json")
+            extracted = self.extractor.invoke(messages, config=config)
         except (ValidationError, OutputParserException):
+            nemo_relay.llm.call_end(
+                handle,
+                {"model": self.model_id, "choices": []},
+                response_codec=nemo_relay.codecs.OpenAIChatCodec(),
+            )
             return {"status": "invalid_request"}
-        if len(result.items) != 1:
+        except BaseException as error:
+            nemo_relay.llm.call_end(
+                handle,
+                {"model": self.model_id, "choices": []},
+                metadata={
+                    "otel.status_code": "ERROR",
+                    "error.type": type(error).__name__,
+                },
+                response_codec=nemo_relay.codecs.OpenAIChatCodec(),
+            )
+            raise
+        raw_response = extracted.get("raw") if isinstance(extracted, dict) else None
+        parsed = extracted.get("parsed") if isinstance(extracted, dict) else None
+        parsing_error = (
+            extracted.get("parsing_error") if isinstance(extracted, dict) else True
+        )
+        try:
+            result = ExtractedOrder.model_validate(parsed)
+        except ValidationError:
+            result = None
+        nemo_relay.llm.call_end(
+            handle,
+            openai_response(self.model_id, raw_response, result),
+            response_codec=nemo_relay.codecs.OpenAIChatCodec(),
+        )
+        if parsing_error is not None or result is None or len(result.items) != 1:
             return {"status": "invalid_request"}
         return {"item": result.items[0]}
 

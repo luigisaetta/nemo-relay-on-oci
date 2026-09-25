@@ -79,7 +79,9 @@ def create_app(
         active_inventory = inventory or Inventory.load(AGENT_DIR / "catalog.json")
         active_extractor = extractor or create_extractor(active_settings)
         async with relay_lifespan(active_settings):
-            application.state.graph = build_graph(active_extractor, active_inventory)
+            application.state.graph = build_graph(
+                active_extractor, active_inventory, active_settings.model_id
+            )
             yield
 
     app = FastAPI(title="Order fulfillment agent", lifespan=lifespan)

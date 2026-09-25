@@ -45,9 +45,13 @@ def test_direct_langfuse_endpoint(version):
     assert endpoint.endpoint == "https://langfuse.example.com/api/public/otel/v1/traces"
     assert endpoint.type == "openinference"
     assert endpoint.transport == "http_binary"
+    assert endpoint.attribute_mappings == [
+        {"key": "llm.cost.total", "alias": "gen_ai.usage.cost"}
+    ]
     scheme, token = endpoint.headers["Authorization"].split()
     assert scheme == "Basic"
     assert b64decode(token).decode() == "pk-test:sk-test"
+    assert endpoint.headers["Accept"] == "application/json"
     assert endpoint.headers.get("x-langfuse-ingestion-version", "") == version
     assert "sk-test" not in repr(settings)
     assert "pk-test" not in repr(settings)

@@ -27,18 +27,21 @@ def route_outcome(state: OrderState) -> str:
     return "respond" if state.get("status") else "continue"
 
 
-def build_graph(extractor: Runnable, inventory: Inventory) -> CompiledStateGraph:
+def build_graph(
+    extractor: Runnable, inventory: Inventory, model_id: str
+) -> CompiledStateGraph:
     """Compile the sequential workflow with explicit rejection branches.
 
     Args:
         extractor: Structured-output OCI model or test runnable.
         inventory: Shared in-memory catalog and order store.
+        model_id: OCI model identifier for the Relay LLM lifecycle.
 
     Returns:
         Compiled graph with isolated state for each invocation.
     """
     graph = StateGraph(OrderState)
-    graph.add_node("extract", ExtractRequestNode(extractor))
+    graph.add_node("extract", ExtractRequestNode(extractor, model_id))
     graph.add_node("match", MatchProductNode(inventory))
     graph.add_node("availability", CheckAvailabilityNode(inventory))
     graph.add_node("register", RegisterOrderNode(inventory.registration_tool()))

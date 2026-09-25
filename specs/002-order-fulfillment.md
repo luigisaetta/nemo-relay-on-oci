@@ -235,6 +235,8 @@ the graph execution.
 Trace configuration will follow the pinned Relay version described in
 [specification 001](001-dependencies-and-observability.md). Collector endpoint, service naming, payload capture, and shutdown behavior
 follow the first implementation decisions below. Credentials must not be stored in the repository.
+LLM token usage and optional Relay-estimated pricing are specified separately in
+[specification 003](003-llm-token-usage-and-cost.md).
 
 ## First implementation decisions
 

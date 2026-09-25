@@ -3,11 +3,15 @@
 from contextlib import asynccontextmanager, contextmanager
 from base64 import b64encode
 from collections.abc import Iterator
+import json
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 import nemo_relay
 from nemo_relay import plugin
+from nemo_relay.model_pricing import ComponentSpec as PricingComponentSpec
+from nemo_relay.model_pricing import FileSource, PricingConfig, validate_config
 from nemo_relay.observability import (
     ComponentSpec,
     ObservabilityConfig,
@@ -47,6 +51,7 @@ def trace_endpoints(settings: Settings) -> list[OpenTelemetryEndpointConfig]:
         endpoint = base_url + "/api/public/otel/v1/traces"
         authorization = b64encode(f"{public_key}:{secret_key}".encode()).decode("ascii")
         headers["Authorization"] = f"Basic {authorization}"
+        headers["Accept"] = "application/json"
         if settings.langfuse_ingestion_version:
             headers["x-langfuse-ingestion-version"] = (
                 settings.langfuse_ingestion_version
@@ -70,8 +75,41 @@ def trace_endpoints(settings: Settings) -> list[OpenTelemetryEndpointConfig]:
             service_name=settings.service_name,
             transport="http_binary",
             headers=headers,
+            attribute_mappings=[
+                {"key": "llm.cost.total", "alias": "gen_ai.usage.cost"}
+            ],
         )
     ]
+
+
+def pricing_component(settings: Settings) -> PricingComponentSpec | None:
+    """Build a validated optional Relay model-pricing component.
+
+    Args:
+        settings: Agent-local model-pricing configuration.
+
+    Returns:
+        A pricing component when a catalog path is configured, otherwise `None`.
+
+    Raises:
+        ValueError: The configured catalog cannot be read, parsed, or validated.
+    """
+    configured_path = settings.model_pricing_file.strip()
+    if not configured_path:
+        return None
+    path = Path(configured_path).expanduser()
+    try:
+        with path.open(encoding="utf-8") as catalog_file:
+            json.load(catalog_file)
+    except FileNotFoundError as error:
+        raise ValueError("MODEL_PRICING_FILE does not exist") from error
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError("MODEL_PRICING_FILE must be readable valid JSON") from error
+    config = PricingConfig(sources=[FileSource(path=str(path))])
+    diagnostics = validate_config(config)["diagnostics"]
+    if any(item["level"] == "error" for item in diagnostics):
+        raise ValueError("MODEL_PRICING_FILE is not a valid Relay pricing catalog")
+    return PricingComponentSpec(config=config)
 
 
 @asynccontextmanager
@@ -88,19 +126,20 @@ async def relay_lifespan(settings: Settings):
         ValueError: The configured trace destination is invalid.
     """
     endpoints = trace_endpoints(settings)
-    configuration = plugin.PluginConfig(
-        components=[
-            ComponentSpec(
-                config=ObservabilityConfig(
-                    enable_full_payloads=True,
-                    opentelemetry=OpenTelemetrySectionConfig(
-                        enabled=bool(endpoints),
-                        endpoints=endpoints,
-                    ),
+    components: list[object] = [
+        ComponentSpec(
+            config=ObservabilityConfig(
+                enable_full_payloads=True,
+                opentelemetry=OpenTelemetrySectionConfig(
+                    enabled=bool(endpoints),
+                    endpoints=endpoints,
                 ),
-            )
-        ]
-    )
+            ),
+        )
+    ]
+    if pricing := pricing_component(settings):
+        components.append(pricing)
+    configuration = plugin.PluginConfig(components=components)
     async with plugin.activate(configuration) as activation:
         yield activation
 

@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableLambda
 
 from demos.order_fulfillment.graph import build_graph
@@ -24,7 +24,17 @@ def test_extraction_prompt_has_no_catalog_and_preserves_features():
             ),
         }
     )
-    graph = build_graph(RunnableLambda(model), inventory)
+    graph = build_graph(
+        RunnableLambda(
+            lambda messages: {
+                "raw": AIMessage(content=""),
+                "parsed": model(messages),
+                "parsing_error": None,
+            }
+        ),
+        inventory,
+        "test",
+    )
     result = graph.invoke({"request": "2 nice wireless keyboards"})
     messages = model.call_args.args[0]
     assert isinstance(messages[0], SystemMessage)

@@ -90,6 +90,9 @@ when using Langfuse.
 The agent builds the OTLP trace URL and endpoint-specific Basic authentication
 header automatically. Each order is exported as a single hierarchy with its
 request/response, complete LLM prompt/message history, and tool input/output.
+The extraction generation exports OCI token usage and can use an optional
+Relay pricing catalog for estimated cost; see the demo README for catalog and
+manual-verification instructions.
 See the [demo setup](demos/order_fulfillment/README.md) for data-handling
 considerations. Native exporter configuration and remote Langfuse delivery have
 been exercised with configured project credentials.

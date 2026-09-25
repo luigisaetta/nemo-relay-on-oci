@@ -7,6 +7,15 @@ when released.
 
 ### Fixed
 
+- Export OCI extraction token usage and optional Relay-estimated model cost to
+  Langfuse through a validated local pricing catalog, using Langfuse's
+  `gen_ai.usage.cost` attribute for the displayed generation cost.
+- Seed the local catalog for `openai.gpt-5.6-sol` with explicitly provisional
+  OpenAI published rates and enable it in the demo environment templates.
+- Name the manual OCI extraction generation `extract_order` rather than the
+  provider-generic `oci`.
+- Request JSON acknowledgements from Langfuse to avoid false Relay OTLP
+  batch-export failures during shutdown.
 - Export each order as one nested Langfuse trace and retain the root, LLM, and
   tool input/output payloads, including complete LLM prompt history.
 - Default the Langfuse Cloud template to v4 real-time ingestion.

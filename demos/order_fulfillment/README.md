@@ -65,6 +65,7 @@ The copy command preserves an existing `.env`. Edit the local file:
 | `LANGFUSE_INGESTION_VERSION` | Empty | Set `4` for Langfuse v4 real-time ingestion; otherwise omit |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Empty | Optional generic OTLP backend; must stay empty with Langfuse |
 | `OTEL_SERVICE_NAME` | `order-fulfillment` | Trace service identity |
+| `MODEL_PRICING_FILE` | `demos/order_fulfillment/pricing.example.json` | Relay JSON model-pricing catalog for estimated LLM cost |
 
 The endpoint is derived as
 `https://inference.generativeai.<OCI_REGION>.oci.oraclecloud.com` for OCI's
@@ -160,6 +161,7 @@ LANGFUSE_SECRET_KEY=sk-lf-your-project-key
 LANGFUSE_INGESTION_VERSION=4
 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=
 OTEL_SERVICE_NAME=order-fulfillment
+MODEL_PRICING_FILE=demos/order_fulfillment/pricing.example.json
 ```
 
 Use only the instance base URL, without `/api/public/otel` or `/v1/traces`.
@@ -168,6 +170,9 @@ The application appends `/api/public/otel/v1/traces` and creates Basic auth from
 `LANGFUSE_INGESTION_VERSION=4` for real-time direct OTLP ingestion. Leave it
 empty only for an older OTLP-capable self-hosted deployment. See
 [Langfuse OTLP ingestion](https://langfuse.com/integrations/native/opentelemetry).
+The endpoint also requests a JSON acknowledgement, preventing the pinned Relay
+HTTP/protobuf exporter from treating Langfuse's successful JSON response as a
+batch-export failure.
 
 No collector or additional SDK is needed. Restart `./demos/order_fulfillment/start.sh`
 after editing configuration, submit an order, and look for its trace in the
@@ -180,6 +185,30 @@ Keys are masked in settings representations and never logged by the app.
 Trace payloads include prompt/message history, requests, responses, tool
 arguments, and tool results; use synthetic orders. Avoid process-global `OTEL_EXPORTER_OTLP_HEADERS` and
 `OTEL_EXPORTER_OTLP_TRACES_HEADERS`; authentication is supplied on this endpoint.
+
+### LLM token usage and estimated cost
+
+The extraction generation exports OCI input, output, and total token counts
+when the provider response supplies usage metadata. The default
+[`pricing.example.json`](pricing.example.json) uses [OpenAI's published
+GPT-5.6 Sol rates](https://developers.openai.com/api/docs/models/gpt-5.6-sol)
+as a starting estimate: USD 4.00 input, USD 0.40
+cached input, USD 20.00 output, and USD 5.00 cache write per million tokens.
+The model is called through OCI, so these are not OCI invoice rates. Before
+using the estimate for financial reporting, copy the catalogue to an untracked
+local file, point `MODEL_PRICING_FILE` to it, and replace the rates with the
+applicable OCI billing values. Update `pricing_as_of` and `pricing_source` at
+the same time.
+
+The catalog file is validated at startup. A missing or invalid catalog prevents
+the server from starting. With real credentials and a configured catalog, send
+a synthetic order and inspect the `extract_order` generation in Langfuse for
+token usage and estimated cost. The export aliases Relay's USD cost attribute
+to Langfuse's `gen_ai.usage.cost` field. This repository verifies the token,
+pricing, and attribute projection offline; it does not claim that Langfuse
+displays a real OCI cost until a real catalog has been exercised. As an
+alternative to `MODEL_PRICING_FILE`, configure the model price in Langfuse
+Models so Langfuse can calculate cost from the exported tokens.
 
 ## Verification
 

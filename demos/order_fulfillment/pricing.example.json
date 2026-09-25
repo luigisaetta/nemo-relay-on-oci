@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "provider": "oci",
+      "model_id": "openai.gpt-5.6-sol",
+      "aliases": ["gpt-5.6-sol"],
+      "currency": "USD",
+      "unit": "per_token",
+      "pricing_as_of": "2026-09-25",
+      "pricing_source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol (provisional OCI proxy; review before billing use)",
+      "rates": {
+        "input_per_million": 4.0,
+        "output_per_million": 20.0,
+        "cache_read_per_million": 0.4,
+        "cache_write_per_million": 5.0
+      },
+      "prompt_cache": {
+        "read_accounting": "separate"
+      }
+    }
+  ]
+}

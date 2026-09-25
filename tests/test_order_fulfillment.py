@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
+from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.output_parsers import PydanticOutputParser
 from nemo_relay.integrations.langgraph import NemoRelayCallbackHandler
@@ -27,16 +28,38 @@ def sample_settings() -> Settings:
 
 
 def extracted(product="keyboard", quantity=2) -> dict:
-    """Build a simulated structured LLM result.
+    """Build a simulated raw structured-output result.
 
     Args:
         product: Product string returned by the model.
         quantity: Requested quantity returned by the model.
 
     Returns:
-        Structured extraction payload.
+        Include-raw structured extraction payload.
     """
-    return {"items": [{"product": product, "quantity": quantity}]}
+    return {
+        "raw": AIMessage(content=""),
+        "parsed": {"items": [{"product": product, "quantity": quantity}]},
+        "parsing_error": None,
+    }
+
+
+def raw_result(parsed, parsing_error=None, usage_metadata=None) -> dict:
+    """Build an include-raw extractor result for an offline test.
+
+    Args:
+        parsed: Structured result to expose as the parsed value.
+        parsing_error: Optional conversion error returned by LangChain.
+        usage_metadata: Optional OCI-style token usage metadata.
+
+    Returns:
+        Include-raw result mapping with an `AIMessage`.
+    """
+    return {
+        "raw": AIMessage(content="", usage_metadata=usage_metadata),
+        "parsed": parsed,
+        "parsing_error": parsing_error,
+    }
 
 
 @pytest.mark.parametrize(
@@ -58,9 +81,16 @@ def extracted(product="keyboard", quantity=2) -> dict:
             "insufficient_stock",
             ["extract", "match", "availability", "respond"],
         ),
-        ({"items": []}, "invalid_request", ["extract", "respond"]),
+        (raw_result({"items": []}), "invalid_request", ["extract", "respond"]),
         (
-            {"items": [*extracted()["items"], *extracted("mouse")["items"]]},
+            raw_result(
+                {
+                    "items": [
+                        *extracted()["parsed"]["items"],
+                        *extracted("mouse")["parsed"]["items"],
+                    ]
+                }
+            ),
             "invalid_request",
             ["extract", "respond"],
         ),
@@ -69,11 +99,11 @@ def extracted(product="keyboard", quantity=2) -> dict:
         (extracted(quantity=1.5), "invalid_request", ["extract", "respond"]),
         (extracted(quantity=True), "invalid_request", ["extract", "respond"]),
         (
-            {"items": [{"product": "keyboard"}]},
+            raw_result({"items": [{"product": "keyboard"}]}),
             "invalid_request",
             ["extract", "respond"],
         ),
-        (None, "invalid_request", ["extract", "respond"]),
+        (raw_result(None), "invalid_request", ["extract", "respond"]),
     ],
 )
 def test_graph_paths(payload, status, nodes):
@@ -85,7 +115,7 @@ def test_graph_paths(payload, status, nodes):
         nodes: Expected executed node sequence.
     """
     inventory = Inventory.load(AGENT_DIR / "catalog.json")
-    graph = build_graph(RunnableLambda(lambda _: payload), inventory)
+    graph = build_graph(RunnableLambda(lambda _: payload), inventory, "test")
     updates = list(
         graph.stream({"request": "Please order my items"}, stream_mode="updates")
     )
@@ -105,7 +135,7 @@ def test_alias_exact_stock_and_exhaustion():
     """Accept normalized aliases, fulfill exact stock, then reject later orders."""
     inventory = Inventory.load(AGENT_DIR / "catalog.json")
     graph = build_graph(
-        RunnableLambda(lambda _: extracted("  TASTIERA  ", 10)), inventory
+        RunnableLambda(lambda _: extracted("  TASTIERA  ", 10)), inventory, "test"
     )
     assert graph.invoke({"request": "10 tastiere"})["response"].status == "confirmed"
     assert graph.invoke({"request": "10 tastiere"})["response"].status == "out_of_stock"
@@ -120,9 +150,9 @@ def test_ambiguous_alias():
             "b": Product(product_id="b", name="B", aliases=["item"], available=2),
         }
     )
-    result = build_graph(RunnableLambda(lambda _: extracted("item")), inventory).invoke(
-        {"request": "2 items"}
-    )
+    result = build_graph(
+        RunnableLambda(lambda _: extracted("item")), inventory, "test"
+    ).invoke({"request": "2 items"})
     assert result["response"].status == "no_match"
     assert not inventory.orders
 
@@ -133,9 +163,10 @@ def test_model_parser_and_prompt():
         responses=['{"items":[{"product":"mouse","quantity":1}]}']
     )
     extractor = model | PydanticOutputParser(pydantic_object=ExtractedOrder)
-    result = build_graph(extractor, Inventory.load(AGENT_DIR / "catalog.json")).invoke(
-        {"request": "One mouse please"}
-    )
+    extractor = extractor | RunnableLambda(raw_result)
+    result = build_graph(
+        extractor, Inventory.load(AGENT_DIR / "catalog.json"), "test"
+    ).invoke({"request": "One mouse please"})
     assert result["response"].status == "confirmed"
 
 
@@ -143,7 +174,9 @@ def test_parser_failure():
     """Malformed LLM output requests clarification without registration."""
     extractor = RunnableLambda(Mock(side_effect=OutputParserException("bad output")))
     inventory = Inventory.load(AGENT_DIR / "catalog.json")
-    result = build_graph(extractor, inventory).invoke({"request": "order something"})
+    result = build_graph(extractor, inventory, "test").invoke(
+        {"request": "order something"}
+    )
     assert result["response"].status == "invalid_request"
     assert not inventory.orders
 
@@ -235,6 +268,7 @@ def test_relay_scopes_include_nodes_model_and_tool():
         graph = build_graph(
             RunnableLambda(lambda _: extracted()),
             Inventory.load(AGENT_DIR / "catalog.json"),
+            "test",
         )
         graph.invoke(
             {"request": "2 keyboards"},
@@ -247,7 +281,7 @@ def test_relay_scopes_include_nodes_model_and_tool():
             "availability",
             "register",
             "respond",
-            "extract_order_llm",
+            "extract_order",
             "register_order",
         }.issubset(set(names))
     finally:
@@ -281,7 +315,7 @@ def test_api_trace_has_one_root_with_full_payloads():
         in {
             "order_fulfillment",
             "order_fulfillment_graph",
-            "extract_order_llm",
+            "extract_order",
             "register_order",
         }
     }
@@ -293,17 +327,17 @@ def test_api_trace_has_one_root_with_full_payloads():
         in {
             "order_fulfillment",
             "order_fulfillment_graph",
-            "extract_order_llm",
+            "extract_order",
             "register_order",
         }
     }
     assert starts["order_fulfillment"].data == {"request": "2 keyboards"}
     assert ends["order_fulfillment"].data["status"] == "confirmed"
-    assert "Extract order items" in str(starts["extract_order_llm"].data)
-    assert "2 keyboards" in str(starts["extract_order_llm"].data)
-    assert ends["extract_order_llm"].data == {
-        "items": [{"product": "keyboard", "quantity": 2}]
-    }
+    assert "Extract order items" in str(starts["extract_order"].data)
+    assert "2 keyboards" in str(starts["extract_order"].data)
+    assert ends["extract_order"].data["choices"][0]["message"]["content"] == (
+        '{"items": [{"product": "keyboard", "quantity": 2}]}'
+    )
     assert starts["register_order"].data == {
         "arguments": {"product_id": "keyboard", "quantity": 2}
     }
@@ -317,7 +351,7 @@ def test_api_trace_has_one_root_with_full_payloads():
     root_uuid = starts["order_fulfillment"].uuid
     for child_name in (
         "order_fulfillment_graph",
-        "extract_order_llm",
+        "extract_order",
         "register_order",
     ):
         parent_uuid = starts[child_name].parent_uuid
