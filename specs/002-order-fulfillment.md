@@ -193,6 +193,13 @@ follow the first implementation decisions below. Credentials must not be stored 
 
 ## First implementation decisions
 
+- In `function_calling` mode, install a process-wide warning filter at server
+  startup for only the exact empty-text `GenericProvider` message, category
+  `UserWarning`, attributed to `langchain_oci.chat_models.oci_generative_ai`.
+  This accommodates tool-call-only responses without mutating filters per
+  concurrent request. Other messages, categories, and modules remain visible;
+  JSON output modes do not install the filter. Extraction validation is unchanged.
+  Tests verify suppression and the unaffected warning cases.
 - Optional `OCI_REASONING_EFFORT` is passed to the OCI SDK as `reasoning_effort`
   using its uppercase values (`NONE`, `MINIMAL`, `LOW`, `MEDIUM`, `HIGH`).
   Empty means omitted. Models rejecting function calling with active reasoning
@@ -203,6 +210,15 @@ follow the first implementation decisions below. Credentials must not be stored 
   Regression tests must verify parameter forwarding and sanitized failures.
 - Match normalized product names and explicit aliases, ignoring case and repeated
   whitespace. Reject unknown or ambiguous matches without fuzzy guessing.
+- Extraction receives no catalog, inventory, or candidate product list. The
+  LLM removes politeness and subjective modifiers such as "nice", normalizes
+  common plurals to singular, and corrects only unambiguous spelling errors.
+  Preserve meaningful qualifiers (wireless, size, material, brand, model, color)
+  and the user's language. Do not replace an unknown item with a familiar one.
+  Examples: "2 nice keyboards" -> `keyboard`, 2; "2 keybordas" -> `keyboard`, 2;
+  "2 nice wireless keyboards" -> `wireless keyboard`, 2. The last example must
+  not match the generic Keyboard entry. Live prompt checks must distinguish
+  model behavior from offline tests that substitute the model.
 - Extract a list of order items with the LLM, then require exactly one item
   with a nonblank product and a strictly positive integer quantity. Do not
   default missing quantities or accept fractional quantities.
@@ -290,3 +306,10 @@ A live OCI request for two keyboards reproduced an upstream 400 rejecting
 function tools with active reasoning. With `OCI_REASONING_EFFORT=NONE`, the
 complete API workflow returned HTTP 200 and `confirmed`. External collector
 delivery remains unverified.
+
+Live normalization checks passed for seven synthetic requests with the configured
+OCI model: "2 nice keyboards", "2 keybordas", "Could I get two lovely mice please?",
+and "Vorrei due belle tastiere" confirmed the intended item and quantity.
+"2 nice wireless keyboards" and "2 lovely bicycles" returned `no_match`;
+"Some nice keyboards" returned `invalid_request`. No catalog was sent to the
+LLM. These sample checks do not guarantee behavior for every possible phrasing.

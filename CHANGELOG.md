@@ -7,6 +7,12 @@ when released.
 
 ### Fixed
 
+- Improved extraction instructions to remove subjective adjectives, normalize
+  plurals and clear typos, and preserve meaningful product features without
+  providing the catalog to the LLM.
+- Suppressed only the exact GenericProvider empty-text UserWarning from the
+  OCI chat-model module when starting the API in function-calling mode.
+  Other warning messages, categories, and modules remain visible.
 - Added optional `OCI_REASONING_EFFORT` configuration to resolve model rejection
   of function calling with active reasoning; normalize values to OCI SDK enums.
 - Replaced generic service-unavailable messages for OCI rejections with an

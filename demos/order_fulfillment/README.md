@@ -27,6 +27,13 @@ Unknown or ambiguous products request clarification. Missing or invalid
 quantities and multiple products are rejected. Insufficient stock does not
 produce a partial order.
 
+The extraction prompt receives no catalog. It removes subjective modifiers
+and politeness, singularizes common product names, and corrects clear typos:
+`2 nice keyboards` and `2 keybordas` become `keyboard`, quantity 2.
+Concrete features remain: `2 nice wireless keyboards` becomes `wireless keyboard`
+and does not match a generic Keyboard entry. Unknown products are not replaced
+with catalog items. Model behavior is checked separately from offline tests.
+
 Successful registration decrements stock atomically and stores an order with a
 UUID in memory. A lock prevents concurrent requests from overselling. Restarting
 resets stock and orders; run **one Uvicorn worker**. Each POST is a new attempt,
@@ -107,6 +114,14 @@ Model extraction quality and structured-output support depend on the selected
 OCI model; offline tests cannot verify those capabilities.
 
 ### Troubleshooting a 502 response
+
+In function-calling mode, startup installs a process-wide filter for the exact
+`GenericProvider could not extract text and returned an empty string...`
+UserWarning attributed to `langchain_oci.chat_models.oci_generative_ai`.
+Tool-call-only responses can validly contain no text. Other messages,
+categories, and modules remain visible, and extraction validation still runs.
+The filter is not installed in JSON output modes. Restart the server to apply
+changes to the output mode or warning configuration.
 
 Read the JSON `detail` response as well as the server log. OCI rejections log
 the upstream status and error code; transport failures log the exception type.

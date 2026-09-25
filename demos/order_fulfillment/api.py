@@ -2,6 +2,8 @@
 
 from contextlib import asynccontextmanager
 import logging
+import re
+import warnings
 
 from fastapi import FastAPI, HTTPException
 from langchain_core.runnables import Runnable
@@ -21,6 +23,27 @@ from demos.order_fulfillment.models import OrderRequest, OrderResponse
 from demos.order_fulfillment.telemetry import relay_lifespan
 
 LOGGER = logging.getLogger(__name__)
+
+
+def configure_warning_filters() -> None:
+    """Suppress only the known OCI tool-call-only empty-text warning.
+
+    The filter applies to this server process. Install it once at startup,
+    rather than changing shared warning filters inside concurrent requests.
+    """
+    message = (
+        "GenericProvider could not extract text and returned an empty "
+        "string. Ensure the selected provider matches the response "
+        "payload format, otherwise content extraction will return an "
+        "empty string."
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=r"\A" + re.escape(message) + r"\Z",
+        category=UserWarning,
+        # The library uses stacklevel=2, attributing it to this caller module.
+        module=r"\Alangchain_oci\.chat_models\.oci_generative_ai\Z",
+    )
 
 
 def create_app(
@@ -50,6 +73,8 @@ def create_app(
             Control while the API is serving requests.
         """
         active_settings = settings or load_settings()
+        if active_settings.output_method == "function_calling":
+            configure_warning_filters()
         active_inventory = inventory or Inventory.load(AGENT_DIR / "catalog.json")
         active_extractor = extractor or create_extractor(active_settings)
         async with relay_lifespan(active_settings):
