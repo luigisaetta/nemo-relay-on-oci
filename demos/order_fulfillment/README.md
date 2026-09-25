@@ -59,7 +59,11 @@ The copy command preserves an existing `.env`. Edit the local file:
 | `OCI_CONFIG_PROFILE` | `DEFAULT` | Local SDK profile; API_KEY only |
 | `OCI_STRUCTURED_OUTPUT_METHOD` | `function_calling` | Model-supported method: `function_calling`, `json_schema`, or `json_mode` |
 | `OCI_REASONING_EFFORT` | Empty; omitted | Optional model-dependent reasoning setting: `NONE`, `MINIMAL`, `LOW`, `MEDIUM`, `HIGH`; lowercase values are normalized |
-| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Empty; export disabled | Collector HTTP/protobuf trace URL, such as `http://localhost:4318/v1/traces` |
+| `LANGFUSE_BASE_URL` | Empty | Remote instance base URL, e.g. `https://langfuse.example.com` |
+| `LANGFUSE_PUBLIC_KEY` | Empty | Public API key of the Langfuse project |
+| `LANGFUSE_SECRET_KEY` | Empty | Secret API key of the same project |
+| `LANGFUSE_INGESTION_VERSION` | Empty | Set `4` for Langfuse v4 real-time ingestion; otherwise omit |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Empty | Optional generic OTLP backend; must stay empty with Langfuse |
 | `OTEL_SERVICE_NAME` | `order-fulfillment` | Trace service identity |
 
 The endpoint is derived as
@@ -136,19 +140,45 @@ See the [OCI request reference](https://docs.oracle.com/en-us/iaas/tools/python/
 
 ## NeMo Relay behavior
 
-The LangGraph callback observes graph execution. Explicit typed Relay scopes
-wrap `extract_order_llm` and `register_order`, because the installed graph
-callback covers chains rather than provider calls. These scopes show the
-model/tool boundaries; they do not provide token accounting or full native
-OCI request/response telemetry.
+Each `POST /orders` creates one `order_fulfillment` agent root scope. LangGraph
+nodes, the explicit LLM scope, and the registration-tool scope are descendants
+of that root, so Langfuse renders one trace hierarchy per order. Relay retains
+the complete LLM prompt/message history and extraction output, plus the root
+request/response and tool arguments/result. This demo intentionally exports
+these payloads: use synthetic orders and never submit secrets or sensitive
+customer data.
 
-Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to enable native HTTP/protobuf export.
-The application owns the Relay activation from startup through shutdown,
-when it closes the exporter. The collector is a separate service and must
-accept OTLP traces; no collector is started by this demo. Graph callbacks may
-include input and output content in trace data, so use synthetic demo orders.
-Use only the documented trace endpoint variable for this demo; avoid overlapping
-process-wide OTLP exporters or header settings.
+### Connect directly to remote Langfuse
+
+Edit the agent's `.env` with the URL and project API keys:
+
+```dotenv
+LANGFUSE_BASE_URL=https://your-langfuse.example.com
+LANGFUSE_PUBLIC_KEY=pk-lf-your-project-key
+LANGFUSE_SECRET_KEY=sk-lf-your-project-key
+LANGFUSE_INGESTION_VERSION=4
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=
+OTEL_SERVICE_NAME=order-fulfillment
+```
+
+Use only the instance base URL, without `/api/public/otel` or `/v1/traces`.
+The application appends `/api/public/otel/v1/traces` and creates Basic auth from
+`public_key:secret_key`. Langfuse Cloud v4 requires
+`LANGFUSE_INGESTION_VERSION=4` for real-time direct OTLP ingestion. Leave it
+empty only for an older OTLP-capable self-hosted deployment. See
+[Langfuse OTLP ingestion](https://langfuse.com/integrations/native/opentelemetry).
+
+No collector or additional SDK is needed. Restart `./demos/order_fulfillment/start.sh`
+after editing configuration, submit an order, and look for its trace in the
+Langfuse project associated with those keys. Export is batched, so ingestion
+is not instantaneous. Empty URL and keys disable Langfuse; partial configuration
+or simultaneous generic OTLP configuration fails startup explicitly.
+
+The app owns the Relay activation and closes it at shutdown to drain exports.
+Keys are masked in settings representations and never logged by the app.
+Trace payloads include prompt/message history, requests, responses, tool
+arguments, and tool results; use synthetic orders. Avoid process-global `OTEL_EXPORTER_OTLP_HEADERS` and
+`OTEL_EXPORTER_OTLP_TRACES_HEADERS`; authentication is supplied on this endpoint.
 
 ## Verification
 
@@ -170,8 +200,8 @@ without a running collector. The coverage threshold includes all `demos/` code.
 Local configuration startup and `/health` have been checked. A live OCI request
 for two keyboards returned HTTP 200 and `confirmed` after setting reasoning
 effort to `NONE` for the configured model. This validates that sample and model,
-not extraction accuracy across all inputs. External collector delivery remains
-unverified: inspect the collector/backend for graph, extraction, and registration
+not extraction accuracy across all inputs. Remote Langfuse delivery remains
+unverified until URL and keys are supplied: inspect Langfuse for graph, extraction, and registration
 scopes when running a sample order.
 
 Return to the [demo index](../../README.md#demos).

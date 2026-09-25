@@ -7,6 +7,9 @@ when released.
 
 ### Fixed
 
+- Export each order as one nested Langfuse trace and retain the root, LLM, and
+  tool input/output payloads, including complete LLM prompt history.
+- Default the Langfuse Cloud template to v4 real-time ingestion.
 - Improved extraction instructions to remove subjective adjectives, normalize
   plurals and clear typos, and preserve meaningful product features without
   providing the catalog to the LLM.
@@ -20,6 +23,13 @@ when released.
   and regression tests for parameter forwarding and error handling.
 
 ### Added
+
+- Direct remote Langfuse export through NeMo Relay's built-in HTTP/protobuf
+  exporter, with automatic trace URL and endpoint-local Basic authentication.
+- Matching local/example Langfuse settings, optional v4 ingestion header,
+  configuration validation, and masked credentials.
+- Tests for direct-export configuration, native schema compatibility, disabled
+  export, invalid settings, and environment precedence.
 
 - Executable `demos/order_fulfillment/start.sh` for root-level server startup
   using the already active Conda environment.

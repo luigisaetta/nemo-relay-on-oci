@@ -18,7 +18,7 @@ listed as planned are not implemented or verified yet.
 
 | Demo | Status | Notes |
 | --- | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | Implemented; offline tests and a live OCI order verified | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay: graph callbacks, typed LLM/tool scopes, and configurable native OTLP export. Relay events are tested locally; external collector delivery remains unverified. |
+| [Order fulfillment](demos/order_fulfillment/README.md) | Implemented; offline tests and a live OCI order verified | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay: graph callbacks, typed LLM/tool scopes, and configurable native OTLP export. Relay events are tested locally; direct export to remote Langfuse is configured; remote delivery awaits project credentials. |
 
 ## Development environment
 
@@ -74,24 +74,25 @@ conda run -n nemo-relay-on-oci python -c 'from langgraph.graph import StateGraph
 
 ## Observability
 
-The intended trace pipeline is:
+The trace pipeline uses the exporter built into NeMo Relay:
 
 ```text
-LangGraph + ChatOCIGenAI -> NeMo Relay -> OTLP -> OpenTelemetry Collector -> backend
+LangGraph + ChatOCIGenAI -> NeMo Relay native OTLP exporter -> remote Langfuse
 ```
 
-Relay includes native OTLP export, so this baseline does not require a
-separate Python OpenTelemetry SDK or exporter. The collector is a separate
-service. The initial transport will be OTLP HTTP/protobuf, typically using
-`http://localhost:4318/v1/traces` locally. Configure the service name,
-endpoint, and exporter shutdown using the pinned Relay release's schema.
-In Relay 0.9.2, `OpenTelemetryEndpointConfig` exposes `endpoint`,
-`service_name`, and `transport="http_binary"` for this transport.
+No separate collector process, Docker container, or Langfuse SDK is required.
+Set `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`, and `LANGFUSE_SECRET_KEY` in
+`demos/order_fulfillment/.env`. Leave them all empty to disable export. Set
+Set `LANGFUSE_INGESTION_VERSION=4` for Langfuse Cloud v4 real-time ingestion.
+Keep `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` empty
+when using Langfuse.
 
-Installing packages does not enable instrumentation or start a collector.
-The first demo wires graph callbacks and explicit LLM/tool scopes and manages
-the exporter lifecycle. Local tests verify Relay events and configuration. Live OCI inference and collector delivery
-are not validated by dependency installation or offline import checks.
+The agent builds the OTLP trace URL and endpoint-specific Basic authentication
+header automatically. Each order is exported as a single hierarchy with its
+request/response, complete LLM prompt/message history, and tool input/output.
+See the [demo setup](demos/order_fulfillment/README.md) for data-handling
+considerations. Native exporter configuration and offline behavior are tested;
+remote delivery awaits the user's Langfuse URL and project credentials.
 
 ## Spec-driven development
 

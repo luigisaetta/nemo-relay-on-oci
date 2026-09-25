@@ -6,7 +6,7 @@ from typing import Literal
 
 from dotenv import dotenv_values
 from langchain_oci import ChatOCIGenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 from demos.order_fulfillment.models import ExtractedOrder, Name
 
@@ -28,6 +28,10 @@ class Settings(BaseModel):
     reasoning_effort: Literal["", "NONE", "MINIMAL", "LOW", "MEDIUM", "HIGH"] = ""
     traces_endpoint: str = ""
     service_name: Name = "order-fulfillment"
+    langfuse_base_url: str = ""
+    langfuse_public_key: SecretStr = SecretStr("")
+    langfuse_secret_key: SecretStr = SecretStr("")
+    langfuse_ingestion_version: Literal["", "4"] = ""
 
     @property
     def endpoint(self) -> str:
@@ -59,6 +63,10 @@ def load_settings(env_file: Path = AGENT_DIR / ".env") -> Settings:
         "reasoning_effort": "OCI_REASONING_EFFORT",
         "traces_endpoint": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
         "service_name": "OTEL_SERVICE_NAME",
+        "langfuse_base_url": "LANGFUSE_BASE_URL",
+        "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
+        "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
+        "langfuse_ingestion_version": "LANGFUSE_INGESTION_VERSION",
     }
     selected = {name: values[key] for name, key in fields.items() if key in values}
     if isinstance(selected.get("reasoning_effort"), str):

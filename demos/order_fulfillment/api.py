@@ -7,6 +7,7 @@ import warnings
 
 from fastapi import FastAPI, HTTPException
 from langchain_core.runnables import Runnable
+import nemo_relay
 from nemo_relay.integrations.langgraph import NemoRelayCallbackHandler
 from oci.exceptions import ServiceError
 from requests.exceptions import RequestException
@@ -20,7 +21,7 @@ from demos.order_fulfillment.config import (
 from demos.order_fulfillment.graph import build_graph
 from demos.order_fulfillment.inventory import Inventory
 from demos.order_fulfillment.models import OrderRequest, OrderResponse
-from demos.order_fulfillment.telemetry import relay_lifespan
+from demos.order_fulfillment.telemetry import relay_lifespan, trace_scope
 
 LOGGER = logging.getLogger(__name__)
 
@@ -105,29 +106,35 @@ def create_app(
         Raises:
             HTTPException: OCI inference fails before registration.
         """
-        try:
-            # A fresh callback keeps trace bookkeeping isolated between requests.
-            result = app.state.graph.invoke(
-                {"request": body.request},
-                config={
-                    "callbacks": [NemoRelayCallbackHandler()],
-                    "run_name": "order_fulfillment",
-                },
-            )
-        except ServiceError as error:
-            LOGGER.error(
-                "OCI model request failed: status=%s code=%s", error.status, error.code
-            )
-            raise HTTPException(
-                502,
-                f"OCI rejected the model request (upstream status {error.status}). "
-                "Check model settings, structured output, reasoning effort, and OCI access.",
-            ) from error
-        except (RequestException, TimeoutError) as error:
-            LOGGER.error("Model transport failed: type=%s", type(error).__name__)
-            raise HTTPException(
-                502, "The model service is unavailable. Please retry later."
-            ) from error
-        return result["response"]
+        with trace_scope(
+            "order_fulfillment", nemo_relay.ScopeType.Agent, {"request": body.request}
+        ) as trace:
+            try:
+                # A fresh callback keeps trace bookkeeping isolated between requests.
+                result = app.state.graph.invoke(
+                    {"request": body.request},
+                    config={
+                        "callbacks": [NemoRelayCallbackHandler()],
+                        "run_name": "order_fulfillment",
+                    },
+                )
+            except ServiceError as error:
+                LOGGER.error(
+                    "OCI model request failed: status=%s code=%s",
+                    error.status,
+                    error.code,
+                )
+                raise HTTPException(
+                    502,
+                    f"OCI rejected the model request (upstream status {error.status}). "
+                    "Check model settings, structured output, reasoning effort, and OCI access.",
+                ) from error
+            except (RequestException, TimeoutError) as error:
+                LOGGER.error("Model transport failed: type=%s", type(error).__name__)
+                raise HTTPException(
+                    502, "The model service is unavailable. Please retry later."
+                ) from error
+            trace["output"] = result["response"].model_dump(mode="json")
+            return result["response"]
 
     return app

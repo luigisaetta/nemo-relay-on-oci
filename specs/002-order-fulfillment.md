@@ -29,7 +29,14 @@ product catalog, and registers an order through a tool when stock permits.
   confirmation that the order was registered.
 - The agent is exposed through an HTTP API using FastAPI, started by Uvicorn.
 - The project stack remains OCI Generative AI, `langchain_oci`, LangGraph,
-  and NeMo Relay, with traces sent through an OpenTelemetry Collector.
+  and NeMo Relay, with traces sent directly to remote Langfuse through the
+  native OTLP exporter (superseding the original collector deployment).
+- Each HTTP order attempt produces one root agent trace. Graph, LLM, and tool
+  spans are descendants of that root so that Langfuse renders one hierarchy.
+- Langfuse traces retain the order request, final response, LLM prompt and
+  response history, and tool arguments and result. This is an explicit
+  observability choice: deployments must not send production secrets or other
+  sensitive customer data in order requests.
 - Each agent uses a `.env` file in its own folder, with `OCI_REGION` and
   `MODEL_ID`. The OCI inference endpoint is derived from `OCI_REGION`.
 - OCI authentication supports the local user's API signing key (`API_KEY`)
@@ -180,12 +187,48 @@ placeholder model and compartment IDs, which must be replaced for deployment.
 
 ## Observability
 
+### Direct Langfuse export
+
+The default deployment path is now agent -> NeMo Relay native OTLP exporter
+-> remote Langfuse. No collector, Langfuse SDK, or additional Python exporter
+is required. Configure these variables in the agent's `.env`:
+
+- `LANGFUSE_BASE_URL`: instance base URL, without the API suffix.
+- `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`: project credentials.
+- `LANGFUSE_INGESTION_VERSION`: set `4` for Langfuse Cloud v4 real-time
+  ingestion; leave it empty only for an older compatible self-hosted instance.
+- `OTEL_SERVICE_NAME`: existing trace service identity.
+
+All three connection values empty disables Langfuse. Partially filled values
+fail startup clearly. Append `/api/public/otel/v1/traces` to the base URL and
+send HTTP/protobuf with endpoint-local `Authorization: Basic base64(pk:sk)`.
+For Langfuse Cloud v4, add `x-langfuse-ingestion-version: 4`. Credentials must
+not appear in settings representations, logs, or tracked files.
+
+The existing generic `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` remains optional for
+other backends. It must be empty when Langfuse is configured; reject simultaneous
+destinations instead of duplicating traces. Do not configure process-global
+OTLP headers; this integration supplies authentication only on its own endpoint.
+The local `.env` and `.env.example` must expose the same Langfuse settings.
+
+Tests cover disabled export, missing credentials, invalid URLs, conflicting
+destinations, Basic authentication, optional v4 header, and lifecycle cleanup.
+Remote delivery can only be verified after the user supplies connection values.
+See [Langfuse OTLP documentation](https://langfuse.com/integrations/native/opentelemetry).
+
 The intended trace path is:
 
 ```text
-LangGraph nodes, LLM calls, and registration tool
-    -> NeMo Relay -> OTLP -> OpenTelemetry Collector
+HTTP order request root -> LangGraph nodes, LLM calls, and registration tool
+    -> NeMo Relay native OTLP exporter -> remote Langfuse
 ```
+
+The application must create the root `Agent` scope before invoking the graph
+and close it with the serialized API response. The LLM scope must retain the
+complete prompt/messages and validated extraction output; the tool scope must
+retain its arguments and result. The observability component enables full
+payload retention. Langfuse v4 Cloud uses ingestion version `4` so new traces
+appear in real time.
 
 Trace configuration will follow the pinned Relay version described in
 [specification 001](001-dependencies-and-observability.md). Collector endpoint, service naming, payload capture, and shutdown behavior
@@ -234,15 +277,16 @@ follow the first implementation decisions below. Credentials must not be stored 
   confirmation. Invalid catalog/configuration fails startup. GET `/health`
   reports readiness without making inference calls.
 - Optional `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables Relay's native HTTP/protobuf
-  exporter. `OTEL_SERVICE_NAME` defaults to `order-fulfillment`. No endpoint means
+  exporter. `OTEL_SERVICE_NAME` defaults to `order-fulfillment`. No generic endpoint or Langfuse configuration means
   export is disabled. Close the Relay activation on shutdown to drain exports.
   Relay callbacks may capture request/response content: use synthetic order data.
 - Use the LLM's structured output with a configurable `OCI_STRUCTURED_OUTPUT_METHOD`
   (`function_calling` by default; `json_schema` and `json_mode` also supported).
   Actual model support must be checked in live validation.
-- Relay's LangGraph callback observes chains and nodes. Explicit typed Relay
-  scopes wrap the LLM extraction and registration tool boundaries; this initial
-  instrumentation does not claim token usage or native provider payload metrics.
+- Relay's LangGraph callback observes chains and nodes. An explicit root agent
+  scope wraps every request, with explicit LLM and tool child scopes retaining
+  their semantic payloads. This instrumentation does not claim token usage or
+  native provider payload metrics.
 
 ## Acceptance criteria
 
@@ -269,6 +313,9 @@ The implementation must include tests derived from the following criteria:
   precedence between process environment and `.env` values.
 - Offline tests substitute the LLM and external services and do not require
   OCI credentials, paid inference, or an external collector.
+- One offline trace test verifies a root agent span, descendant LLM/tool spans,
+  and populated request, prompt/history, extraction, tool, and final-response
+  payloads.
 - Additional tests cover the edge cases agreed in the decisions above.
 - Black formatting and Pylint pass with no unresolved findings; pytest passes
   with at least 80% application coverage, including all application modules.

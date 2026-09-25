@@ -1,8 +1,12 @@
-"""Native Relay exporter lifecycle for the demo process."""
+"""Native Relay tracing and exporter lifecycle for the demo process."""
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
+from base64 import b64encode
+from collections.abc import Iterator
+from typing import Any
 from urllib.parse import urlparse
 
+import nemo_relay
 from nemo_relay import plugin
 from nemo_relay.observability import (
     ComponentSpec,
@@ -14,43 +18,124 @@ from nemo_relay.observability import (
 from demos.order_fulfillment.config import Settings
 
 
+def trace_endpoints(settings: Settings) -> list[OpenTelemetryEndpointConfig]:
+    """Build one authenticated Langfuse or generic OTLP destination.
+
+    Args:
+        settings: Agent-local tracing settings.
+
+    Returns:
+        One endpoint, or an empty list when export is disabled.
+
+    Raises:
+        ValueError: Settings are incomplete, conflicting, or have an invalid URL.
+    """
+    base_url = settings.langfuse_base_url.strip().rstrip("/")
+    public_key = settings.langfuse_public_key.get_secret_value().strip()
+    secret_key = settings.langfuse_secret_key.get_secret_value().strip()
+    endpoint = settings.traces_endpoint.strip()
+    headers = {}
+    if any((base_url, public_key, secret_key)):
+        if not all((base_url, public_key, secret_key)):
+            raise ValueError(
+                "Set LANGFUSE_BASE_URL, LANGFUSE_PUBLIC_KEY, and LANGFUSE_SECRET_KEY together"
+            )
+        if endpoint:
+            raise ValueError(
+                "Leave OTEL_EXPORTER_OTLP_TRACES_ENDPOINT empty for Langfuse"
+            )
+        endpoint = base_url + "/api/public/otel/v1/traces"
+        authorization = b64encode(f"{public_key}:{secret_key}".encode()).decode("ascii")
+        headers["Authorization"] = f"Basic {authorization}"
+        if settings.langfuse_ingestion_version:
+            headers["x-langfuse-ingestion-version"] = (
+                settings.langfuse_ingestion_version
+            )
+    if not endpoint:
+        return []
+    parsed = urlparse(endpoint)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or any((parsed.query, parsed.fragment))
+    ):
+        raise ValueError(
+            "Trace URL must be HTTP(S), without credentials, query, or fragment"
+        )
+    return [
+        OpenTelemetryEndpointConfig(
+            type="openinference",
+            endpoint=endpoint,
+            service_name=settings.service_name,
+            transport="http_binary",
+            headers=headers,
+        )
+    ]
+
+
 @asynccontextmanager
 async def relay_lifespan(settings: Settings):
     """Activate Relay and drain exports on application shutdown.
 
     Args:
-        settings: Collector endpoint and service identity.
+        settings: Langfuse or generic OTLP destination and service identity.
 
     Yields:
         The active Relay plugin host.
 
     Raises:
-        ValueError: The configured collector URL is not HTTP or HTTPS.
+        ValueError: The configured trace destination is invalid.
     """
-    endpoints = []
-    if settings.traces_endpoint:
-        parsed = urlparse(settings.traces_endpoint)
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-            raise ValueError("Collector endpoint must be an HTTP(S) URL")
-        endpoints.append(
-            OpenTelemetryEndpointConfig(
-                type="full",
-                endpoint=settings.traces_endpoint,
-                service_name=settings.service_name,
-                transport="http_binary",
-            )
-        )
+    endpoints = trace_endpoints(settings)
     configuration = plugin.PluginConfig(
         components=[
             ComponentSpec(
                 config=ObservabilityConfig(
+                    enable_full_payloads=True,
                     opentelemetry=OpenTelemetrySectionConfig(
                         enabled=bool(endpoints),
                         endpoints=endpoints,
-                    )
+                    ),
                 ),
             )
         ]
     )
     async with plugin.activate(configuration) as activation:
         yield activation
+
+
+@contextmanager
+def trace_scope(
+    name: str, scope_type: nemo_relay.ScopeType, trace_input: dict[str, Any]
+) -> Iterator[dict[str, Any]]:
+    """Record a Relay scope with explicit semantic input and output.
+
+    Args:
+        name: Stable, human-readable operation name.
+        scope_type: Relay semantic type for the operation.
+        trace_input: JSON-compatible payload sent as the operation input.
+
+    Yields:
+        A mutable mapping. Set its ``output`` key to a JSON-compatible result
+        before leaving the context.
+
+    Raises:
+        BaseException: Re-raises an exception raised by the scoped operation.
+    """
+    handle = nemo_relay.scope.push(name, scope_type, input=trace_input)
+    trace_data: dict[str, Any] = {}
+    try:
+        yield trace_data
+    except BaseException:
+        nemo_relay.scope.pop(
+            handle,
+            output=trace_data.get("output"),
+            metadata={"otel.status_code": "ERROR"},
+        )
+        raise
+    nemo_relay.scope.pop(
+        handle,
+        output=trace_data.get("output"),
+        metadata={"otel.status_code": "OK"},
+    )

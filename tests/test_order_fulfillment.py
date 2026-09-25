@@ -252,3 +252,58 @@ def test_relay_scopes_include_nodes_model_and_tool():
         }.issubset(set(names))
     finally:
         nemo_relay.subscribers.deregister("test-order-scopes")
+
+
+def test_api_trace_has_one_root_with_full_payloads():
+    """Record the complete order hierarchy and its semantic payloads."""
+    events = []
+    nemo_relay.subscribers.register("test-order-trace", events.append)
+    try:
+        app = create_app(
+            sample_settings(),
+            RunnableLambda(lambda _: extracted()),
+            Inventory.load(AGENT_DIR / "catalog.json"),
+        )
+        with TestClient(app) as client:
+            assert (
+                client.post("/orders", json={"request": "2 keyboards"}).status_code
+                == 200
+            )
+        nemo_relay.subscribers.flush()
+    finally:
+        nemo_relay.subscribers.deregister("test-order-trace")
+
+    starts = {
+        event.name: event
+        for event in events
+        if event.scope_category == "start"
+        and event.name in {"order_fulfillment", "extract_order_llm", "register_order"}
+    }
+    ends = {
+        event.name: event
+        for event in events
+        if event.scope_category == "end"
+        and event.name in {"order_fulfillment", "extract_order_llm", "register_order"}
+    }
+    assert starts["order_fulfillment"].data == {"request": "2 keyboards"}
+    assert ends["order_fulfillment"].data["status"] == "confirmed"
+    assert "Extract order items" in str(starts["extract_order_llm"].data)
+    assert "2 keyboards" in str(starts["extract_order_llm"].data)
+    assert ends["extract_order_llm"].data == {
+        "items": [{"product": "keyboard", "quantity": 2}]
+    }
+    assert starts["register_order"].data == {
+        "arguments": {"product_id": "keyboard", "quantity": 2}
+    }
+    assert ends["register_order"].data["status"] == "confirmed"
+
+    parent_by_scope = {
+        event.uuid: event.parent_uuid
+        for event in events
+        if event.scope_category == "start"
+    }
+    root_uuid = starts["order_fulfillment"].uuid
+    for child_name in ("extract_order_llm", "register_order"):
+        parent_uuid = starts[child_name].parent_uuid
+        while parent_uuid != root_uuid:
+            parent_uuid = parent_by_scope[parent_uuid]
