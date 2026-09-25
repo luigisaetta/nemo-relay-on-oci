@@ -1,0 +1,7 @@
+# Runtime dependencies; see specs/001-dependencies-and-observability.md.
+-c constraints.txt
+nemo-relay[langgraph]==0.9.2
+langgraph==1.2.12
+langchain-oci==0.3.2
+oci==2.187.0
+# Relay includes its native OTLP exporter; the collector runs separately.

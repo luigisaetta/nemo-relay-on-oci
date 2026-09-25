@@ -7,6 +7,13 @@ when released.
 
 ### Added
 
+- Dependency and observability specification with offline acceptance checks.
+- Pinned runtime and development requirements and resolved constraints for
+  the `nemo-relay-on-oci` Conda environment.
+- LangGraph, NeMo Relay with the LangGraph extra, LangChain OCI, OCI SDK,
+  and the required formatting, linting, and testing tools.
+- Documented native Relay OTLP export to a separate OpenTelemetry Collector
+  and the distinction between dependency checks and live integration tests.
 - README badges for Black, Pylint, pytest, and Python 3.11+.
 - `AGENTS.md` defining demo objectives and technologies, the spec-driven
   workflow, and mandatory checks before commits, releases, and completion.

@@ -8,8 +8,8 @@
 A collection of AI agent demos built with **NVIDIA NeMo Relay**,
 **OCI Generative AI**, **`langchain_oci`**, and **LangGraph**.
 
-The repository is in its initial stage: it contains development rules and
-documentation, but no runnable demos or Python code yet.
+The repository contains development rules, dependency manifests, and an
+initial environment specification, but no runnable demos or Python code yet.
 
 ## Development environment
 
@@ -28,8 +28,59 @@ conda run -n nemo-relay-on-oci python --version
 ```
 
 Do not use Conda `base`, system Python, or another environment for project
-Python work. Tool and dependency setup instructions will be added with the
-first demo.
+Python work. Install the runtime and development dependencies with:
+
+```bash
+conda run -n nemo-relay-on-oci python -m pip install -r requirements-dev.txt
+conda run -n nemo-relay-on-oci python -m pip check
+```
+
+For runtime dependencies only, install `requirements.txt` instead.
+Both use [constraints.txt](constraints.txt) to pin resolved dependencies.
+The initial resolution targets macOS ARM64 with Python 3.11.0; installation
+on other platforms or Python versions must be verified separately.
+
+| Dependency | Version | Purpose |
+| --- | --- | --- |
+| `nemo-relay[langgraph]` | 0.9.2 | Relay runtime, framework instrumentation, and native OTLP export |
+| `langgraph` | 1.2.12 | Agent workflow orchestration |
+| `langchain-oci` | 0.3.2 | OCI Generative AI models through `ChatOCIGenAI` |
+| `oci` | 2.187.0 | OCI SDK and authentication |
+| `black` | 26.5.1 | Formatting |
+| `pylint` | 4.0.9 | Static analysis |
+| `pytest` / `pytest-cov` | 9.1.1 / 7.1.0 | Tests and coverage |
+
+The published Relay 0.9.2 extras do not include `oci`: the planned OCI
+integration uses Relay's LangChain instrumentation with `langchain_oci`.
+See [specification 001](specs/001-dependencies-and-observability.md) for
+requirements, acceptance criteria, and upstream sources.
+
+An offline import check (no OCI client or collector connection) is:
+
+```bash
+conda run -n nemo-relay-on-oci python -c 'from langgraph.graph import StateGraph; from langchain_oci import ChatOCIGenAI; from nemo_relay.integrations.langgraph import NemoRelayCallbackHandler; from nemo_relay.observability import OpenTelemetryEndpointConfig; import oci; print("Imports OK")'
+```
+
+## Observability
+
+The intended trace pipeline is:
+
+```text
+LangGraph + ChatOCIGenAI -> NeMo Relay -> OTLP -> OpenTelemetry Collector -> backend
+```
+
+Relay includes native OTLP export, so this baseline does not require a
+separate Python OpenTelemetry SDK or exporter. The collector is a separate
+service. The initial transport will be OTLP HTTP/protobuf, typically using
+`http://localhost:4318/v1/traces` locally. Configure the service name,
+endpoint, and exporter shutdown using the pinned Relay release's schema.
+In Relay 0.9.2, `OpenTelemetryEndpointConfig` exposes `endpoint`,
+`service_name`, and `transport="http_binary"` for this transport.
+
+Installing packages does not enable instrumentation or start a collector.
+The first demo will wire the model and graph instrumentation, configure the
+exporter, and verify trace delivery. Live OCI inference and collector delivery
+are not validated by dependency installation or offline import checks.
 
 ## Spec-driven development
 
@@ -59,10 +110,11 @@ These steps are mandatory before a commit, release, or declaration that the
 work is done. Do not bypass failures by disabling checks or lowering the
 coverage threshold.
 
-At this documentation-only stage, Python checks are not applicable because
-there is no code. Dependencies, configuration, and exact commands for Black,
-Pylint, and pytest will be introduced with the first demo. From that point
-on, checks will also apply to documentation-only changes.
+At this dependency-and-documentation stage, Python code checks and coverage
+are not applicable because there is no application or test code. The tools
+are installed; their configuration and exact source/test targets will be
+introduced with the first demo. From that point on, checks will also apply
+to documentation-only changes.
 
 ## Running demos and tests
 
