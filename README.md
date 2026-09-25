@@ -8,8 +8,8 @@
 A collection of AI agent demos built with **NVIDIA NeMo Relay**,
 **OCI Generative AI**, **`langchain_oci`**, and **LangGraph**.
 
-The repository contains development rules, dependency manifests, and an
-initial environment specification, but no runnable demos or Python code yet.
+The repository contains a runnable order fulfillment demo, specifications,
+pinned dependencies, and offline acceptance tests.
 
 ## Demos
 
@@ -18,7 +18,7 @@ listed as planned are not implemented or verified yet.
 
 | Demo | Status | Notes |
 | --- | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | Specification and configuration template; not runnable yet | Extracts a product and quantity with an OCI LLM, checks a JSON catalog, and simulates order registration through a tool in a LangGraph workflow. Planned NeMo Relay highlights: tracing graph nodes, LLM calls, and tool execution, with native OTLP export to an OpenTelemetry Collector to inspect successful and rejected order paths. |
+| [Order fulfillment](demos/order_fulfillment/README.md) | Implemented; offline tests and local configuration startup verified | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay: graph callbacks, typed LLM/tool scopes, and configurable native OTLP export. Relay events are tested locally; live OCI inference and external collector delivery remain unverified. |
 
 ## Development environment
 
@@ -57,6 +57,8 @@ on other platforms or Python versions must be verified separately.
 | `oci` | 2.187.0 | OCI SDK and authentication |
 | `black` | 26.5.1 | Formatting |
 | `pylint` | 4.0.9 | Static analysis |
+| `fastapi` / `uvicorn` | 0.141.1 / 0.54.0 | HTTP API and server |
+| `python-dotenv` | 1.2.3 | Agent-local configuration |
 | `pytest` / `pytest-cov` | 9.1.1 / 7.1.0 | Tests and coverage |
 
 The published Relay 0.9.2 extras do not include `oci`: the planned OCI
@@ -87,8 +89,8 @@ In Relay 0.9.2, `OpenTelemetryEndpointConfig` exposes `endpoint`,
 `service_name`, and `transport="http_binary"` for this transport.
 
 Installing packages does not enable instrumentation or start a collector.
-The first demo will wire the model and graph instrumentation, configure the
-exporter, and verify trace delivery. Live OCI inference and collector delivery
+The first demo wires graph callbacks and explicit LLM/tool scopes and manages
+the exporter lifecycle. Local tests verify Relay events and configuration. Live OCI inference and collector delivery
 are not validated by dependency installation or offline import checks.
 
 ## Spec-driven development
@@ -119,29 +121,38 @@ These steps are mandatory before a commit, release, or declaration that the
 work is done. Do not bypass failures by disabling checks or lowering the
 coverage threshold.
 
-At this dependency-and-documentation stage, Python code checks and coverage
-are not applicable because there is no application or test code. The tools
-are installed; their configuration and exact source/test targets will be
-introduced with the first demo. From that point on, checks will also apply
-to documentation-only changes.
+Run all checks from the repository root:
+
+```bash
+conda run -n nemo-relay-on-oci python -m black demos tests
+conda run -n nemo-relay-on-oci python -m black --check demos tests
+conda run -n nemo-relay-on-oci python -m pylint --persistent=no demos tests
+conda run -n nemo-relay-on-oci python -m pytest
+conda run -n nemo-relay-on-oci python -m pip check
+```
+
+`pyproject.toml` includes all application modules under `demos/` in coverage
+and enforces the 80% minimum. Tests substitute the LLM and cloud services.
 
 ## Running demos and tests
 
-Each agent will have its own folder under `demos/` and must be runnable from
-the repository root.
+Each agent has its own folder under `demos/` and starts from the repository
+root. See the [order fulfillment README](demos/order_fulfillment/README.md)
+for configuration, sample requests, and limitations.
 
-The first planned demo is an order fulfillment agent exposed through FastAPI
-and Uvicorn, using a LangGraph workflow to extract a product and quantity,
-check a JSON catalog, and simulate order registration through a tool.
-See the [draft specification](specs/002-order-fulfillment.md) for confirmed
-requirements, the proposed graph, and decisions to discuss before implementation.
-This demo is not implemented yet.
+```bash
+./demos/order_fulfillment/start.sh
+```
 
-Each agent will load configuration from a `.env` file in its own folder.
+Activate `nemo-relay-on-oci` in your shell before running this command.
+The script uses the active environment's Python and starts the server on
+`127.0.0.1:8000`.
+
+Each agent loads configuration from a `.env` file in its own folder.
 For order fulfillment, `OCI_REGION` and `MODEL_ID` select the region and model;
-the code will derive the OCI inference endpoint from the region. Authentication
-will support the local user's OCI API signing key (`API_KEY`) and
-`RESOURCE_PRINCIPAL`. The draft specification describes confirmed supporting
+the code derives the OCI inference endpoint from the region. Authentication
+supports the local user's OCI API signing key (`API_KEY`) and
+`RESOURCE_PRINCIPAL`. The specification describes confirmed supporting
 variables for the compartment, authentication selector, and local profile.
 Start with the demo's [.env.example](demos/order_fulfillment/.env.example);
 its [README](demos/order_fulfillment/README.md) explains configuration setup.

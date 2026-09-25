@@ -23,6 +23,15 @@ entries, and code documentation such as docstrings and explanatory comments.
 Write new documentation in English and keep existing documentation in English
 when updating it.
 
+## Code readability and documentation
+
+Prioritize readable, straightforward code. Do not overengineer: use the
+simplest design that satisfies the specification and avoid unnecessary
+abstractions. Always document modules, classes, and functions with English
+Google-style docstrings, including Args, Returns, and Raises sections where
+applicable. Add comments where they clarify intent, non-obvious behavior,
+or important constraints; do not merely repeat the code.
+
 ## Required Conda environment
 
 Use the Conda environment named `nemo-relay-on-oci` for all Python work,

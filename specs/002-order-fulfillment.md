@@ -1,6 +1,6 @@
 # Specification 002: Order fulfillment HTTP agent
 
-Status: Draft — implementation details must be discussed before coding.
+Status: First implementation authorized; baseline decisions recorded below.
 
 ## Objective
 
@@ -37,12 +37,12 @@ product catalog, and registers an order through a tool when stock permits.
 - All documentation is in English. All Python work uses the Conda environment
   `nemo-relay-on-oci` and follows the quality gates in `AGENTS.md`.
 
-## Proposed graph
+## Graph
 
-The following decomposition is proposed for review. Node names and class
-names are provisional; each node will have a single responsibility.
+Each node is a dedicated callable class returning partial state updates.
+Model and tool invocations receive the graph RunnableConfig for callback propagation.
 
-| Node | Proposed class | Responsibility |
+| Node | Class | Responsibility |
 | --- | --- | --- |
 | Extract | `ExtractRequestNode` | Use the LLM to extract product and quantity and validate the result |
 | Match | `MatchProductNode` | Find a catalog match for the extracted product |
@@ -64,12 +64,13 @@ flowchart TD
 ```
 
 The extraction and registration failure paths must never produce a successful
-order confirmation. The exact handling of invalid extraction, insufficient
-stock, and registration failures is to be agreed before implementation.
+order confirmation. Invalid extraction requests clarification; insufficient stock rejects the order;
+operational failures never confirm registration.
 
-## Proposed data contracts
+## Data contracts
 
-These are logical fields, not final API or storage schemas.
+Pydantic models validate HTTP inputs, catalog entries, and extracted data;
+a TypedDict carries per-request graph state.
 
 - Input: original natural-language request.
 - Extraction result: product name and requested quantity.
@@ -80,19 +81,32 @@ These are logical fields, not final API or storage schemas.
 - Order confirmation: original request, canonical product, ordered quantity,
   order identifier, and explicit registration confirmation.
 
-The catalog is loaded at startup. Its exact file layout and validation rules
-will be defined with the implementation design.
+The catalog is loaded once at startup from `catalog.json` beside the agent.
+Entries have `product_id`, `name`, `aliases`, and nonnegative integer `available`.
+The catalog must be nonempty and product IDs must be unique.
 
-## Proposed HTTP interface and startup
+## HTTP interface and startup
 
 - Demo folder: `demos/order_fulfillment/`.
 - A POST endpoint accepts a natural-language request and returns the outcome.
-- Proposed route: `POST /orders` with `{"request": "I would like 2 keyboards"}`.
+- Route: `POST /orders` with `{"request": "I would like 2 keyboards"}`.
 - FastAPI provides interactive API documentation.
 - The README will provide a Uvicorn command runnable from the repository root.
 
-Final route names, response schema, HTTP status codes, health endpoint,
-and Uvicorn module path remain implementation decisions.
+Start from the repository root after activating `nemo-relay-on-oci` in the
+calling shell. The executable script uses that shell's `python`, runs Uvicorn
+on `127.0.0.1:8000`, and replaces itself with the server using `exec` so that
+interrupt and termination signals reach Uvicorn directly. It does not activate
+Conda or invoke `conda run`.
+
+```bash
+./demos/order_fulfillment/start.sh
+```
+
+Responses include `status`, `request`, `message`, `product`, `quantity`,
+`order_id`, and `available`; fields without a value are null. Business statuses
+are `confirmed`, `invalid_request`, `no_match`, `out_of_stock`, and
+`insufficient_stock`.
 
 ## Agent configuration and OCI authentication
 
@@ -174,29 +188,37 @@ LangGraph nodes, LLM calls, and registration tool
 ```
 
 Trace configuration will follow the pinned Relay version described in
-[specification 001](001-dependencies-and-observability.md). Collector endpoint,
-service naming, payload capture, and shutdown behavior will be specified
-before implementation. Credentials must not be stored in the repository.
+[specification 001](001-dependencies-and-observability.md). Collector endpoint, service naming, payload capture, and shutdown behavior
+follow the first implementation decisions below. Credentials must not be stored in the repository.
 
-## Decisions to discuss before implementation
+## First implementation decisions
 
-1. **Product matching:** exact names and aliases, fuzzy matching, or LLM-assisted
-   matching; treatment of multiple plausible matches.
-2. **Quantity validation:** missing, zero, negative, fractional, or ambiguous
-   quantities, and requests containing more than one product. Proposed default:
-   ask for clarification unless there is one product and a positive integer.
-3. **Insufficient stock:** stock is positive but below the requested quantity.
-   Proposed default: reject without partial fulfillment and state availability.
-4. **Simulation semantics:** whether successful orders decrement stock; whether
-   orders remain in memory or are written to a local file; behavior on restart.
-5. **Repeated and concurrent requests:** whether to support idempotency and how
-   to prevent overselling if inventory changes.
-6. **Response language and format:** language of user-facing messages and the
-   fields that constitute a complete confirmation.
-7. **Operational errors:** model failure, malformed catalog, and tool failure
-   responses, including the corresponding HTTP status codes.
-8. **Trace destination:** collector address, protocol, and which request or
-   response details should appear in traces.
+- Match normalized product names and explicit aliases, ignoring case and repeated
+  whitespace. Reject unknown or ambiguous matches without fuzzy guessing.
+- Extract a list of order items with the LLM, then require exactly one item
+  with a nonblank product and a strictly positive integer quantity. Do not
+  default missing quantities or accept fractional quantities.
+- Reject insufficient stock without partial fulfillment.
+- Store orders and mutable stock in memory; reset both on restart. Recheck and
+  decrement stock under a lock in the registration tool. Run one Uvicorn worker.
+  Every POST is a new attempt; persistent storage and idempotency are out of scope.
+- Return English messages and structured outcomes including the original request,
+  product, quantity, order ID, and remaining stock when applicable. Confirmation
+  is deterministic and never generated by the LLM.
+- POST `/orders` returns 200 for business outcomes, 422 for invalid HTTP input,
+  and 502 for model service failures. Unexpected tool failures return 500 without
+  confirmation. Invalid catalog/configuration fails startup. GET `/health`
+  reports readiness without making inference calls.
+- Optional `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables Relay's native HTTP/protobuf
+  exporter. `OTEL_SERVICE_NAME` defaults to `order-fulfillment`. No endpoint means
+  export is disabled. Close the Relay activation on shutdown to drain exports.
+  Relay callbacks may capture request/response content: use synthetic order data.
+- Use the LLM's structured output with a configurable `OCI_STRUCTURED_OUTPUT_METHOD`
+  (`function_calling` by default; `json_schema` and `json_mode` also supported).
+  Actual model support must be checked in live validation.
+- Relay's LangGraph callback observes chains and nodes. Explicit typed Relay
+  scopes wrap the LLM extraction and registration tool boundaries; this initial
+  instrumentation does not claim token usage or native provider payload metrics.
 
 ## Acceptance criteria
 
@@ -230,12 +252,11 @@ The implementation must include tests derived from the following criteria:
   instructions. Live OCI and collector checks are reported separately from
   offline tests.
 
-## Current scope
+## Implementation scope
 
-This change defines the specification, demo folder, configuration template,
-and demo documentation. It does not implement the graph,
-HTTP API, tool, catalog, or tracing configuration, and does not install new
-HTTP dependencies. Implementation starts after the open details are discussed.
+Implement the graph, JSON catalog, simulated registration tool, FastAPI API,
+configuration loading, Relay lifecycle, offline tests, and root-level Uvicorn
+startup. Live OCI calls and external collector delivery are separate checks.
 
 ## Configuration references
 
@@ -243,3 +264,16 @@ HTTP dependencies. Implementation starts after the open details are discussed.
 - [OCI Generative AI inference client](https://docs.oracle.com/en-us/iaas/tools/python/latest/api/generative_ai_inference/client/oci.generative_ai_inference.GenerativeAiInferenceClient.html)
 - Authentication parameter names were checked against the installed
   `langchain-oci` 0.3.2 source (`OCIGenAIBase`).
+
+## Implementation and validation mapping
+
+- `models.py`, `nodes.py`, and `graph.py`: validated extraction and explicit flow.
+- `inventory.py` and `catalog.json`: startup catalog, matching, and atomic tool.
+- `config.py`, `telemetry.py`, and `api.py`: configuration, Relay lifecycle, API.
+- `tests/test_order_fulfillment.py`: business branches, HTTP behavior, concurrency,
+  actual LangChain parsing, and Relay scope emission.
+- `tests/test_configuration.py`: configuration precedence, authentication wiring,
+  catalog validation, and exporter cleanup.
+
+Offline tests do not establish extraction accuracy for the deployed OCI model.
+Live inference and external collector delivery must be validated separately.

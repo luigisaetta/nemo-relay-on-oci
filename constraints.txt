@@ -88,3 +88,8 @@ websockets==16.1.1
 xxhash==4.0.1
 yarl==1.25.1
 zstandard==0.25.0
+fastapi==0.141.1
+uvicorn==0.54.0
+python-dotenv==1.2.3
+annotated-doc==0.0.5
+starlette==1.7.0

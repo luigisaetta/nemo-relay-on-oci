@@ -5,3 +5,9 @@ langgraph==1.2.12
 langchain-oci==0.3.2
 oci==2.187.0
 # Relay includes its native OTLP exporter; the collector runs separately.
+fastapi==0.141.1
+uvicorn==0.54.0
+python-dotenv==1.2.3
+pydantic==2.13.5
+langchain-core==1.6.5
+requests==2.34.2

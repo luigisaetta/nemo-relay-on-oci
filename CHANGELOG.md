@@ -7,6 +7,17 @@ when released.
 
 ### Added
 
+- Executable `demos/order_fulfillment/start.sh` for root-level server startup
+  using the already active Conda environment.
+- First order fulfillment implementation: five class-based LangGraph nodes,
+  structured OCI LLM extraction, JSON catalog, and atomic in-memory registration tool.
+- FastAPI `/orders` and `/health` endpoints with Uvicorn startup from the root.
+- Agent-local configuration with API_KEY and RESOURCE_PRINCIPAL authentication.
+- Relay graph callbacks, typed LLM/tool scopes, optional native OTLP export,
+  and exporter lifecycle cleanup.
+- Offline tests and automatic 80% minimum application coverage enforcement.
+- FastAPI, Uvicorn, python-dotenv, and explicit directly imported dependencies.
+
 - `demos/order_fulfillment/` with an English README and `.env.example` for
   OCI model, region, compartment, and authentication configuration.
 - Root README demo index with links, implementation status, and notes on
@@ -35,6 +46,10 @@ when released.
   work, with activation and non-interactive execution instructions.
 
 ### Changed
+
+- Required readable code, simple designs, Google-style docstrings, and explanatory
+  comments in AGENTS.md.
+- Finalized first-version behavior and updated demo documentation and index.
 
 - Confirmed the order fulfillment authentication selector, compartment setting,
   local OCI profile defaults, and process-environment precedence in the spec.

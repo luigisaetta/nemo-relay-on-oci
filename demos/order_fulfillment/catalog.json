@@ -1,0 +1,5 @@
+[
+  {"product_id": "keyboard", "name": "Keyboard", "aliases": ["keyboards", "tastiera", "tastiere"], "available": 10},
+  {"product_id": "mouse", "name": "Mouse", "aliases": ["mice"], "available": 5},
+  {"product_id": "monitor", "name": "Monitor", "aliases": ["monitors", "schermo"], "available": 0}
+]

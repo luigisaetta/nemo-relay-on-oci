@@ -1,0 +1,16 @@
+[tool.black]
+target-version = ['py311']
+
+[tool.pylint.main]
+py-version = '3.11'
+
+[tool.pytest.ini_options]
+testpaths = ['tests']
+addopts = '--cov=demos --cov-report=term-missing --cov-fail-under=80'
+
+[tool.coverage.run]
+source = ['demos']
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
