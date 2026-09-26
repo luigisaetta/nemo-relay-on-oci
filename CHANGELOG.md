@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- Removed stray exploration files from the repository root and stopped tracking
+  VS Code workspace settings.
 - Added standard author, last-modified, license, and English description
   headers to every Python source file. Documented the required header format
   and date-maintenance rule for contributors.

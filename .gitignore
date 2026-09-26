@@ -2,6 +2,11 @@
 .env
 .env.*
 !.env.example
+
+# Local editor settings and NeMo Relay observability output.
+.vscode/
+observability/
+
 __pycache__/
 *.py[cod]
 .pytest_cache/
