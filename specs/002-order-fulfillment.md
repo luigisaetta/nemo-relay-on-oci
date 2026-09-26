@@ -2,6 +2,11 @@
 
 Status: First implementation authorized; baseline decisions recorded below.
 
+Related specifications: [Specification 003](003-llm-token-usage-and-cost.md)
+defines LLM token and pricing telemetry; [Specification 005](005-pii-redaction.md)
+defines phone-number redaction for exported telemetry while preserving the
+client-facing request and response.
+
 ## Objective
 
 Build a simple order fulfillment agent that receives a natural-language

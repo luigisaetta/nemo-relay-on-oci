@@ -7,6 +7,7 @@ when released.
 
 ### Changed
 
+- Added the PII-redaction design specification for the order-fulfillment demo.
 - Removed stray exploration files from the repository root and stopped tracking
   VS Code workspace settings.
 - Added standard author, last-modified, license, and English description
