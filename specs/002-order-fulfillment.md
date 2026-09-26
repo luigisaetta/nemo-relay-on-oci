@@ -39,9 +39,11 @@ product catalog, and registers an order through a tool when stock permits.
 - Each HTTP order attempt produces one root agent trace. Graph, LLM, and tool
   spans are descendants of that root so that Langfuse renders one hierarchy.
 - Langfuse traces retain the order request, final response, LLM prompt and
-  response history, and tool arguments and result. This is an explicit
-  observability choice: deployments must not send production secrets or other
-  sensitive customer data in order requests.
+  response history, and tool arguments and result. When enabled, the
+  phone-number policy defined by Specification 005 sanitizes recognized phone
+  numbers before export. This is not general PII protection: deployments must
+  not send production secrets or other sensitive customer data in order
+  requests.
 - Each agent uses a `.env` file in its own folder, with `OCI_REGION` and
   `MODEL_ID`. The OCI inference endpoint is derived from `OCI_REGION`.
 - OCI authentication supports the local user's API signing key (`API_KEY`)
@@ -234,7 +236,9 @@ human-readable Relay scopes for the domain operations: `extract_order`,
 `match_catalog_product`, `check_inventory_availability`, `register_order`, and
 `build_order_response`. The LLM scope must retain the complete prompt/messages
 and validated extraction output; the tool scope must retain its arguments and
-result. The observability component enables full payload retention. Langfuse
+result. The observability component enables full payload retention before the
+optional phone-number sanitization policy is applied to exported telemetry.
+Langfuse
 v4 Cloud uses ingestion version `4` so new traces appear in real time. Avoid
 the automatic LangGraph callback because it exposes framework implementation
 names (such as parsers and runnable sequences) instead of domain operations.

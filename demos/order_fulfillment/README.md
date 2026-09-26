@@ -66,6 +66,7 @@ The copy command preserves an existing `.env`. Edit the local file:
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Empty | Optional generic OTLP backend; must stay empty with Langfuse |
 | `OTEL_SERVICE_NAME` | `order-fulfillment` | Trace service identity |
 | `MODEL_PRICING_FILE` | `demos/order_fulfillment/pricing.example.json` | Relay JSON model-pricing catalog for estimated LLM cost |
+| `PII_REDACTION` | `mask` | Phone-number telemetry policy: `mask`, `redact`, or `off` |
 
 The endpoint is derived as
 `https://inference.generativeai.<OCI_REGION>.oci.oraclecloud.com` for OCI's
@@ -178,9 +179,37 @@ spans use domain names rather than LangGraph implementation names:
 `register_order`, and `build_order_response`. Thus Langfuse renders one
 readable hierarchy per order without parser, runnable, or router noise. Relay
 retains the complete LLM prompt/message history and extraction output, plus the
-root request/response and tool arguments/result. This demo intentionally
-exports these payloads: use synthetic orders and never submit secrets or
-sensitive customer data.
+root request/response and tool arguments/result. When `PII_REDACTION` is
+enabled, detected phone numbers in those telemetry payloads are sanitized
+before they reach Langfuse. Use synthetic orders and never submit secrets or
+sensitive customer data: phone redaction does not protect other PII.
+
+### PII redaction
+
+`PII_REDACTION=mask` is the default. It sanitizes detected phone numbers in
+Relay events exported to Langfuse while leaving the request sent to OCI and the
+HTTP response sent to the client unchanged. `mask` retains the final four
+digits; `redact` replaces detected phone numbers with `[REDACTED]`; `off`
+retains unmodified telemetry payloads.
+
+For example, with `PII_REDACTION=mask`, submit:
+
+```bash
+curl -X POST http://127.0.0.1:8000/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"request":"I would like 2 keyboards, call me at +39 333 123 4567"}'
+```
+
+The OCI model and the HTTP response receive the original phone number. In
+Langfuse, the `order_fulfillment` trace, `extract_order` generation, and
+`build_order_response` span show the masked form `+** *** *** 4567` instead.
+Offline verification with NeMo Relay 0.9.2 also recognized and sanitized
+`+393331234567`, `333-123-4567`, and `(333) 123 4567`.
+
+Only the Relay built-in `phone` detector is configured. Email addresses,
+payment-card numbers, and any other data that the phone detector does not
+recognize remain visible in telemetry. Continue using synthetic data and never
+submit secrets or sensitive customer data.
 
 ### Connect directly to remote Langfuse
 
@@ -194,6 +223,7 @@ LANGFUSE_INGESTION_VERSION=4
 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=
 OTEL_SERVICE_NAME=order-fulfillment
 MODEL_PRICING_FILE=demos/order_fulfillment/pricing.example.json
+PII_REDACTION=mask
 ```
 
 Use only the instance base URL, without `/api/public/otel` or `/v1/traces`.
@@ -215,7 +245,8 @@ or simultaneous generic OTLP configuration fails startup explicitly.
 The app owns the Relay activation and closes it at shutdown to drain exports.
 Keys are masked in settings representations and never logged by the app.
 Trace payloads include prompt/message history, requests, responses, tool
-arguments, and tool results; use synthetic orders. Avoid process-global `OTEL_EXPORTER_OTLP_HEADERS` and
+arguments, and tool results. The configured PII policy sanitizes recognized
+phone numbers only; use synthetic orders for all other sensitive data. Avoid process-global `OTEL_EXPORTER_OTLP_HEADERS` and
 `OTEL_EXPORTER_OTLP_TRACES_HEADERS`; authentication is supplied on this endpoint.
 
 ### LLM token usage and estimated cost

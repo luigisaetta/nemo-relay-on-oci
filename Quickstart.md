@@ -93,6 +93,7 @@ LANGFUSE_PUBLIC_KEY=pk-lf-your-project-key
 LANGFUSE_SECRET_KEY=sk-lf-your-project-key
 LANGFUSE_INGESTION_VERSION=4
 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=
+PII_REDACTION=mask
 ```
 
 For `API_KEY` authentication, configure the OCI SDK profile and signing key on
@@ -156,10 +157,26 @@ A successful request returns `status: "confirmed"`, an order ID, and the
 remaining inventory. API documentation is available at
 `http://127.0.0.1:8000/docs`.
 
+To verify phone-number redaction in exported telemetry, use the default
+`PII_REDACTION=mask` setting and submit a second synthetic request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"request":"I would like 2 keyboards, call me at +39 333 123 4567"}'
+```
+
+The model and HTTP response retain the original request. Langfuse shows the
+phone number as `+** *** *** 4567` in the exported trace. Set
+`PII_REDACTION=redact` for `[REDACTED]`, or `off` to disable this phone-only
+sanitization. It does not protect email addresses or other sensitive data, so
+continue using synthetic inputs.
+
 Look for the `order_fulfillment` trace in the configured Langfuse project after
 submitting an order. It contains the agent steps, prompts, responses, token
-usage, and estimated invocation cost. Trace export is batched, so it may take
-a short time to appear.
+usage, and estimated invocation cost. When enabled, phone-number redaction is
+applied before export. Trace export is batched, so it may take a short time to
+appear.
 
 ## Next steps
 

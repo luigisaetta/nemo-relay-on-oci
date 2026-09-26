@@ -36,6 +36,7 @@ class Settings(BaseModel):
     traces_endpoint: str = ""
     service_name: Name = "order-fulfillment"
     model_pricing_file: str = ""
+    pii_redaction: Literal["mask", "redact", "off"] = "mask"
     langfuse_base_url: str = ""
     langfuse_public_key: SecretStr = SecretStr("")
     langfuse_secret_key: SecretStr = SecretStr("")
@@ -72,6 +73,7 @@ def load_settings(env_file: Path = AGENT_DIR / ".env") -> Settings:
         "traces_endpoint": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
         "service_name": "OTEL_SERVICE_NAME",
         "model_pricing_file": "MODEL_PRICING_FILE",
+        "pii_redaction": "PII_REDACTION",
         "langfuse_base_url": "LANGFUSE_BASE_URL",
         "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
         "langfuse_secret_key": "LANGFUSE_SECRET_KEY",

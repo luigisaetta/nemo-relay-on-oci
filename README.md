@@ -61,7 +61,7 @@ capabilities demonstrated by each demo.
 
 | Demo | Functionality |
 | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** Demonstrates:<ul><li>OCI LLM extraction, JSON inventory, and simulated order registration in an explicit LangGraph workflow.</li><li>NeMo Relay tracing of named agent steps, prompts, responses, token usage, and estimated per-invocation cost.</li><li>Direct OpenTelemetry export of those traces to Langfuse.</li><li>A `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest.</li></ul> |
+| [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** Demonstrates:<ul><li>OCI LLM extraction, JSON inventory, and simulated order registration in an explicit LangGraph workflow.</li><li>NeMo Relay tracing of named agent steps, prompts, responses, token usage, and estimated per-invocation cost.</li><li>Configurable phone-number PII redaction in exported Relay telemetry, without changing the OCI prompt or HTTP response.</li><li>Direct OpenTelemetry export of those traces to Langfuse.</li><li>A `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest.</li></ul> |
 
 ## Development environment
 
@@ -131,10 +131,14 @@ To run the first demo as intended:
   `demos/order_fulfillment/.env`.
 - Set `LANGFUSE_INGESTION_VERSION=4` for Langfuse Cloud v4 real-time ingestion.
 - Keep `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` empty when using Langfuse.
+- Set `PII_REDACTION` to `mask` (default), `redact`, or `off` to control
+  phone-number sanitization in telemetry.
 
 The agent builds the OTLP trace URL and endpoint-specific Basic authentication
 header automatically. Each order is exported as a single hierarchy with its
-request/response, complete LLM prompt/message history, and tool input/output.
+request/response, LLM prompt/message history, and tool input/output. When
+enabled, Relay sanitizes recognized phone numbers in exported telemetry only;
+the OCI prompt and client-facing HTTP response remain unchanged.
 The extraction generation exports OCI token usage and uses the configured Relay
 pricing catalog to calculate an estimated cost per invocation; see the demo
 README for catalog and manual-verification instructions.

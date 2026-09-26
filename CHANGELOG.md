@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- Added configurable phone-number PII redaction to order-fulfillment Relay
+  telemetry. The OCI prompt and client-facing response remain unchanged.
 - Added the PII-redaction design specification for the order-fulfillment demo.
 - Removed stray exploration files from the repository root and stopped tracking
   VS Code workspace settings.

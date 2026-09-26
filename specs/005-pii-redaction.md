@@ -1,5 +1,7 @@
 # Specification 005: Phone-number PII redaction in exported traces
 
+Status: Implemented with offline verification on NeMo Relay 0.9.2.
+
 ## Objective
 
 Add configurable phone-number PII redaction to the
@@ -144,6 +146,14 @@ neither OCI credentials nor network access.
 9. An invalid `PII_REDACTION` value fails settings loading with a clear error.
 10. `pii_component` returns `None` for `off` and a component configured with
     the corresponding action for `mask` and `redact`.
+
+## Offline detector characterization
+
+The implementation's offline subscriber tests verified that the NeMo Relay
+0.9.2 built-in `phone` detector sanitizes all of these formats with the `mask`
+policy: `+39 333 123 4567`, `+393331234567`, `333-123-4567`, and
+`(333) 123 4567`. This result is limited to the pinned runtime and must be
+rechecked after a Relay upgrade.
 
 ## Manual verification
 

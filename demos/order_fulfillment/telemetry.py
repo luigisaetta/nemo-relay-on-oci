@@ -16,7 +16,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import nemo_relay
-from nemo_relay import plugin
+from nemo_relay import pii_redaction, plugin
 from nemo_relay.model_pricing import ComponentSpec as PricingComponentSpec
 from nemo_relay.model_pricing import FileSource, PricingConfig, validate_config
 from nemo_relay.observability import (
@@ -119,6 +119,31 @@ def pricing_component(settings: Settings) -> PricingComponentSpec | None:
     return PricingComponentSpec(config=config)
 
 
+def pii_component(settings: Settings) -> pii_redaction.ComponentSpec | None:
+    """Build a validated optional Relay phone-number redaction component.
+
+    Args:
+        settings: Agent-local PII-redaction configuration.
+
+    Returns:
+        A phone-redaction component when enabled, otherwise `None`.
+
+    Raises:
+        ValueError: The configured Relay PII-redaction policy is invalid.
+    """
+    if settings.pii_redaction == "off":
+        return None
+    config = pii_redaction.PiiRedactionConfig(
+        builtin=pii_redaction.BuiltinConfig(
+            action=settings.pii_redaction, detector="phone"
+        )
+    )
+    diagnostics = pii_redaction.validate_config(config)["diagnostics"]
+    if any(item["level"] == "error" for item in diagnostics):
+        raise ValueError("PII_REDACTION is not a valid Relay redaction policy")
+    return pii_redaction.ComponentSpec(config=config)
+
+
 @asynccontextmanager
 async def relay_lifespan(settings: Settings):
     """Activate Relay and drain exports on application shutdown.
@@ -146,6 +171,8 @@ async def relay_lifespan(settings: Settings):
     ]
     if pricing := pricing_component(settings):
         components.append(pricing)
+    if pii := pii_component(settings):
+        components.append(pii)
     configuration = plugin.PluginConfig(components=components)
     async with plugin.activate(configuration) as activation:
         yield activation
