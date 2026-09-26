@@ -12,7 +12,6 @@ import re
 from collections.abc import Callable
 
 import nemo_relay
-from oci.exceptions import ConnectTimeout, RequestException, ServiceError
 from oci.generative_ai_inference import models
 
 from demos.order_fulfillment.config import Settings
@@ -103,13 +102,7 @@ def build_prompt_guard(settings: Settings, client: object | None) -> Callable:
             try:
                 if client is not None and oci_flagged(client, settings, text):
                     return "prompt injection detected by OCI Guardrails"
-            except (
-                ServiceError,
-                RequestException,
-                ConnectTimeout,
-                OSError,
-                TimeoutError,
-            ) as error:
+            except Exception as error:  # pylint: disable=broad-exception-caught
                 if settings.prompt_guard_on_error == "block":
                     return "OCI Guardrails unavailable"
                 LOGGER.warning("OCI Guardrails unavailable: %s", type(error).__name__)

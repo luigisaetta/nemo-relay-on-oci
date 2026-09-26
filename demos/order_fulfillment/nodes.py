@@ -7,10 +7,7 @@ Description:
     Implements the callable nodes used by the order-fulfillment graph.
 """
 
-import asyncio
-import contextvars
 import inspect
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import json
 
@@ -23,6 +20,7 @@ from langchain_core.messages import (
 )
 from langchain_core.runnables import Runnable, RunnableConfig
 from langchain_core.tools import BaseTool
+from nemo_relay.utils import run_sync
 from pydantic import ValidationError
 
 from demos.order_fulfillment.inventory import Inventory
@@ -89,11 +87,11 @@ async def run_conditional_execution(request: nemo_relay.LLMRequest) -> None:
 
 
 def execute_conditional_execution(request: nemo_relay.LLMRequest) -> None:
-    """Synchronously execute Relay guardrails with or without an active loop.
+    """Synchronously execute Relay guardrails while preserving Relay context.
 
-    LangGraph calls this node synchronously. Relay exposes Python guardrails as
-    an awaitable when activation already owns an event loop, so that case uses
-    a context-preserving worker thread rather than nesting event loops.
+    `run_sync` handles both a normal synchronous caller and an active event
+    loop. In the latter case, it propagates context variables and Relay's scope
+    stack to its worker thread.
 
     Args:
         request: Relay request that will be validated before an LLM call.
@@ -104,16 +102,7 @@ def execute_conditional_execution(request: nemo_relay.LLMRequest) -> None:
     Raises:
         RuntimeError: A registered guardrail rejects the request.
     """
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        asyncio.run(run_conditional_execution(request))
-        return
-    context = contextvars.copy_context()
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        executor.submit(
-            context.run, asyncio.run, run_conditional_execution(request)
-        ).result()
+    run_sync(run_conditional_execution(request))
 
 
 def usage_payload(raw_response: object) -> dict[str, int] | None:

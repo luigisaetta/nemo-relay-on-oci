@@ -7,6 +7,9 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Corrected prompt-guardrail examples to distinguish the local
+  pattern layer from OCI ApplyGuardrails, and made unexpected OCI response
+  shapes follow the configured safe failure policy.
 - 2026-09-26: Added the layered prompt-injection guardrail to order fulfillment,
   including local and OCI detection, doctor validation, safe blocked outcomes,
   and documentation.
