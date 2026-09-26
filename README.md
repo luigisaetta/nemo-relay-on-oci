@@ -56,6 +56,10 @@ missing. The complete environment setup, Langfuse and OCI prerequisites,
 configuration reference, launch, and verification steps are in
 [Quickstart.md](Quickstart.md).
 
+For a step-by-step explanation of adding Relay observability, token pricing,
+UUID-safe PII masking, and prompt-injection protection to a LangGraph OCI
+agent, see the [NeMo Relay integration guide](docs/nemo-relay-integration-guide.md).
+
 ## Demos
 
 This table is updated as demos are added or developed. It lists the functional

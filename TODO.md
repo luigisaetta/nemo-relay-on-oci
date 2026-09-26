@@ -30,3 +30,11 @@
 - **Needs maintainer environment — Enterprise AI deployment:** Complete OCI
   Enterprise AI deployment with Langfuse keys from OCI Vault; the current
   `agent.yaml` does not export traces.
+- **Planned — Email PII masking:** Add email masking as an additional PII
+  example in both demos, alongside the phone-number pattern. Verified by the
+  reviewer on NeMo Relay 0.9.2:
+  - the built-in `email` detector altered 0 of 2,000 UUID order IDs;
+  - several detectors can be combined with the `profiles` configuration,
+    passed as a dictionary because the 0.9.2 `PiiRedactionConfig` dataclass
+    does not expose `profiles`;
+  - example output: `mario.rossi@example.com` → `m**********@example.com`.

@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Added a NeMo Relay integration guide covering LangGraph OCI
+  observability, pricing, UUID-safe PII masking, and prompt-injection controls.
 - 2026-09-26: Replaced Relay's UUID-corrupting built-in phone detector with an
   explicit phone pattern in both order-fulfillment demos, and made Responses
   extraction input readable in Langfuse through promoted Relay metadata.
