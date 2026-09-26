@@ -79,6 +79,11 @@ numbers in input and model output telemetry, while OCI receives the original
 request. The strict JSON schema sent through Responses is generated from the
 Pydantic model without OpenAI internal APIs.
 
+The root and `build_order_response` scope outputs put the serialized order
+result under `response`, so Langfuse renders the complete JSON response,
+including status and order ID, rather than only the top-level `message` text.
+The HTTP response is unchanged.
+
 ### Known OCI Italian false positive
 
 OCI Guardrails 1.1.3 was observed in live `eu-frankfurt-1` calls to flag the

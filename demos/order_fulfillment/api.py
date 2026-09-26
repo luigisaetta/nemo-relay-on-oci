@@ -156,7 +156,7 @@ def create_app(
                 raise HTTPException(
                     502, "The model service is unavailable. Please retry later."
                 ) from error
-            trace["output"] = result["response"].model_dump(mode="json")
+            trace["output"] = {"response": result["response"].model_dump(mode="json")}
             return result["response"]
 
     return app

@@ -395,5 +395,5 @@ class BuildResponseNode:
                 order_id=state.get("order_id"),
                 available=state.get("available"),
             )
-            trace["output"] = response.model_dump(mode="json")
+            trace["output"] = {"response": response.model_dump(mode="json")}
             return {"response": response}

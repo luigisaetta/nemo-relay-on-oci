@@ -16,6 +16,17 @@ Build a simple order fulfillment agent that receives a natural-language
 request, extracts a product and quantity using an LLM, checks a simulated
 product catalog, and registers an order through a tool when stock permits.
 
+## Observability correction: complete response projection
+
+For the root HTTP scope and `build_order_response`, Relay scope output must be
+wrapped as `{"response": <serialized OrderResponse>}`. Relay's OpenInference
+projection otherwise treats a top-level `message` or `text` field as a
+text/plain output and Langfuse displays only that field. The wrapper preserves
+the complete JSON response—status, request, message, product, quantity, order
+ID, and availability—without changing the HTTP response contract. Offline
+subscriber tests verify `output.response.status` and
+`output.response.order_id` on the root end event.
+
 ## Confirmed requirements
 
 - Every agent has a dedicated folder under `demos/`.

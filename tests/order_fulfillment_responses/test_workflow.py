@@ -166,6 +166,36 @@ def test_pattern_blocked_http_outcome_skips_responses_client():
     assert not responses.calls
 
 
+def test_trace_outputs_wrap_the_complete_order_response():
+    """Export complete root and response-builder data to Relay subscribers."""
+    app, _ = application(payload())
+    events: list[object] = []
+    nemo_relay.subscribers.register("responses-complete-trace", events.append)
+    try:
+        with TestClient(app) as client:
+            response = client.post("/orders", json={"request": "2 keyboards"})
+        nemo_relay.subscribers.flush()
+    finally:
+        nemo_relay.subscribers.deregister("responses-complete-trace")
+
+    assert response.status_code == 200
+    root_end = next(
+        event
+        for event in events
+        if event.scope_category == "end" and event.name == "order_fulfillment_responses"
+    )
+    response_end = next(
+        event
+        for event in events
+        if event.scope_category == "end" and event.name == "build_order_response"
+    )
+    root_response = root_end.data["response"]
+    assert root_response["status"] == "confirmed"
+    assert root_response["order_id"]
+    assert response_end.data["response"]["status"] == "confirmed"
+    assert response_end.data["response"]["order_id"] == root_response["order_id"]
+
+
 def test_inventory_concurrency_prevents_overselling():
     """Keep atomic registration behavior equal to the first demo."""
     inventory = Inventory.load(AGENT_DIR / "catalog.json")

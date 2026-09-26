@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Wrapped root and response-building Relay scope outputs for both
+  order-fulfillment demos so Langfuse renders complete order-result JSON.
 - 2026-09-26: Aligned the Responses API extraction prompt and LLM trace name
   with the original order-fulfillment demo, documented the OCI Italian
   guardrail false positive, and expanded the dedicated offline test suite.

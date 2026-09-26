@@ -368,7 +368,9 @@ def test_api_trace_has_one_root_with_full_payloads():
         }
     }
     assert starts["order_fulfillment"].data == {"request": "2 keyboards"}
-    assert ends["order_fulfillment"].data["status"] == "confirmed"
+    root_response = ends["order_fulfillment"].data["response"]
+    assert root_response["status"] == "confirmed"
+    assert root_response["order_id"]
     assert "Extract order items" in str(starts["extract_order"].data)
     assert "2 keyboards" in str(starts["extract_order"].data)
     assert ends["extract_order"].data["choices"][0]["message"]["content"] == (
@@ -385,7 +387,9 @@ def test_api_trace_has_one_root_with_full_payloads():
         "requested_quantity": 2,
     }
     assert ends["check_inventory_availability"].data == {"available": 10}
-    assert ends["build_order_response"].data["status"] == "confirmed"
+    response_output = ends["build_order_response"].data["response"]
+    assert response_output["status"] == "confirmed"
+    assert response_output["order_id"] == root_response["order_id"]
 
     parent_by_scope = {
         event.uuid: event.parent_uuid

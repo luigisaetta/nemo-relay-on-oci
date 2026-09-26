@@ -124,7 +124,7 @@ def create_app(
                     "OCI Responses transport failure: type=%s", type(error).__name__
                 )
                 raise HTTPException(502, "model service unavailable") from error
-            trace["output"] = result["response"].model_dump(mode="json")
+            trace["output"] = {"response": result["response"].model_dump(mode="json")}
             return result["response"]
 
     return app

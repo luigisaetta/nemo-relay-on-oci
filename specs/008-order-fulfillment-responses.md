@@ -47,6 +47,15 @@ Relay behaviors.
   `chiamami al <number>` phrasing. Documentation must recommend `il mio numero
   è <number>` in Italian presentations; no guardrail code change is allowed.
 
+## Observability correction: complete response projection
+
+The root HTTP scope and `build_order_response` scope export their result as
+`{"response": <serialized OrderResponse>}`. A bare response object has a
+top-level `message`, which Relay's OpenInference projection presents to
+Langfuse as text-only output. The wrapper retains the whole response JSON in
+Langfuse while leaving the HTTP API unchanged. Subscriber tests verify root
+`output.response.status` and `output.response.order_id`.
+
 ## Scope and exclusions
 
 - The new demo is a complete, deliberately duplicated copy of the first demo;

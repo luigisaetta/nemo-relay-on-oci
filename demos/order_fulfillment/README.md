@@ -199,6 +199,11 @@ enabled, detected phone numbers in those telemetry payloads are sanitized
 before they reach Langfuse. Use synthetic orders and never submit secrets or
 sensitive customer data: phone redaction does not protect other PII.
 
+The root and `build_order_response` scope outputs place the serialized order
+result under `response`. This lets Langfuse render the complete JSON response,
+including status and order ID, instead of displaying only the top-level
+`message` text. The HTTP response is unchanged.
+
 ### PII redaction
 
 `PII_REDACTION=mask` is the default. It sanitizes detected phone numbers in
