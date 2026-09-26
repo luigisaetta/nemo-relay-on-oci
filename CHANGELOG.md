@@ -7,12 +7,12 @@ when released.
 
 ### Changed
 
-- Added configurable phone-number PII redaction to order-fulfillment Relay
+- 2026-09-26: Added configurable phone-number PII redaction to order-fulfillment Relay
   telemetry. The OCI prompt and client-facing response remain unchanged.
-- Added the PII-redaction design specification for the order-fulfillment demo.
-- Removed stray exploration files from the repository root and stopped tracking
+- 2026-09-26: Added the PII-redaction design specification for the order-fulfillment demo.
+- 2026-09-26: Removed stray exploration files from the repository root and stopped tracking
   VS Code workspace settings.
-- Added standard author, last-modified, license, and English description
+- 2026-09-26: Added standard author, last-modified, license, and English description
   headers to every Python source file. Documented the required header format
   and date-maintenance rule for contributors.
 - Clarified the repository objective as developing and deploying robust,

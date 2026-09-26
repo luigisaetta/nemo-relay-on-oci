@@ -49,6 +49,11 @@ Description:
 Set `Last modified` to the current date whenever the file is changed. Keep the
 description concise, accurate, and specific to that source file.
 
+When adding an entry under `Unreleased` in `CHANGELOG.md`, prefix that entry
+with the current date in `YYYY-MM-DD` format. Do not retroactively date
+existing changelog entries unless they are being updated as part of the current
+change.
+
 ## Required Conda environment
 
 Use the Conda environment named `nemo-relay-on-oci` for all Python work,
