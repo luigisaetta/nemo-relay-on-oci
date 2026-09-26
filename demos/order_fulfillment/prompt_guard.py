@@ -109,7 +109,7 @@ def build_prompt_guard(settings: Settings, client: object | None) -> Callable:
                 nemo_relay.scope.event(
                     "prompt_guard.oci_unavailable",
                     data={"error_type": type(error).__name__},
-                    severity="warning",
+                    severity=nemo_relay.LogSeverity.Warn,
                 )
         return None
 

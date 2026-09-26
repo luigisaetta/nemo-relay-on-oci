@@ -55,7 +55,8 @@ When OCI guardrails fail, including ServiceError, OCI transport errors,
 timeouts, or an unexpected response shape, they follow
 `PROMPT_GUARD_ON_ERROR`. `allow` emits
 `nemo_relay.scope.event("prompt_guard.oci_unavailable", data={"error_type":
-<class name>}, severity="warning")`, logs only the exception type, and keeps
+<class name>}, severity=nemo_relay.LogSeverity.Warn)`, logs only the exception
+type, and keeps
 the pattern layer active. `block` returns the fixed unavailable reason.
 
 During `relay_lifespan`, create and register a non-off guard as `prompt_guard`
@@ -131,6 +132,7 @@ system-message exclusion; OCI score/version behavior; combined short-circuit;
 allow/block OCI failures and malformed OCI responses with safe event payload;
 complete-app allow/block/off paths; no extractor or LLM event after block;
 guardrail registration cleanup and `run_sync` invocation;
+end-to-end fail-open behavior with Relay's real warning event;
 unrelated RuntimeError propagation; PII masking on a blocked root event; no
 user text in reasons/events; both client authentication paths; and doctor
 success, OCI error, network error, offline skip, and empty-version warning.
