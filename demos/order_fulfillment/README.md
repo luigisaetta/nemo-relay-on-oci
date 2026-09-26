@@ -222,14 +222,16 @@ curl -X POST http://127.0.0.1:8000/orders \
 
 The OCI model and the HTTP response receive the original phone number. In
 Langfuse, the `order_fulfillment` trace, `extract_order` generation, and
-`build_order_response` span show the masked form `+** *** *** 4567` instead.
-Offline verification with NeMo Relay 0.9.2 also recognized and sanitized
-`+393331234567`, `333-123-4567`, and `(333) 123 4567`.
+`build_order_response` span show the masked form `************4567` instead.
+The UUID-safe pattern also masks `+393331234567`, `(333) 123 4567`, and
+`333 123 4567`, preserving the final four digits.
 
-Only the Relay built-in `phone` detector is configured. Email addresses,
-payment-card numbers, and any other data that the phone detector does not
-recognize remain visible in telemetry. Continue using synthetic data and never
-submit secrets or sensitive customer data.
+The explicit pattern is used instead of Relay's built-in `phone` detector,
+which can corrupt digit groups inside UUID order IDs. The dashed-only form
+`333-123-4567` is deliberately not masked because it is indistinguishable from
+a UUID fragment. Email addresses, payment-card numbers, and other unsupported
+PII remain visible in telemetry. Continue using synthetic data and never submit
+secrets or sensitive customer data.
 
 ### Prompt-injection guardrail
 

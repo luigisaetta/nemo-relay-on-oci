@@ -216,6 +216,11 @@ class ExtractRequestNode:
                 model_name=self.model_id,
                 codec=OpenAIResponsesCodec(),
                 response_codec=OpenAIResponsesCodec(),
+                metadata={
+                    "langfuse.observation.input": (
+                        "system: " + EXTRACTION_PROMPT + "\nuser: " + state["request"]
+                    )
+                },
             )
 
         try:

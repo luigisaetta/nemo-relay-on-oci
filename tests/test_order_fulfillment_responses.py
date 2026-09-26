@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 import httpx
@@ -31,6 +32,7 @@ from demos.order_fulfillment_responses.config import (
 from demos.order_fulfillment_responses.doctor import Reporter, check_model
 from demos.order_fulfillment_responses.inventory import Inventory
 from demos.order_fulfillment_responses.nodes import (
+    EXTRACTION_PROMPT,
     ExtractRequestNode,
     output_text,
     responses_request,
@@ -40,6 +42,7 @@ from demos.order_fulfillment_responses.prompt_guard import build_prompt_guard, u
 from demos.order_fulfillment_responses.telemetry import (
     pii_component,
     pricing_component,
+    trace_scope,
     trace_endpoints,
 )
 
@@ -497,6 +500,7 @@ def test_telemetry_endpoint_and_optional_components(tmp_path):
     endpoint = trace_endpoints(langfuse)[0]
     assert endpoint.service_name == "order-fulfillment-responses"
     assert endpoint.headers["x-langfuse-ingestion-version"] == "4"
+    assert endpoint.promote_metadata_prefixes == ["langfuse."]
     with pytest.raises(ValueError, match="together"):
         trace_endpoints(settings(langfuse_base_url="https://langfuse.example"))
     with pytest.raises(ValueError, match="Trace URL"):
@@ -588,7 +592,17 @@ def test_relay_masks_input_and_output_pii_and_exports_usage_and_cost(tmp_path):
     assert response.status_code == 200
     assert responses.calls[0]["input"].endswith(phone)
     assert phone not in serialized
-    assert "+** *** *** 4567" in serialized
+    assert "************4567" in serialized
+    llm_start = next(
+        event
+        for event in events
+        if event.name == "extract_order" and event.scope_category == "start"
+    )
+    assert llm_start.metadata["langfuse.observation.input"] == (
+        "system: "
+        + EXTRACTION_PROMPT
+        + "\nuser: I would like 2 keyboards, call me at ************4567"
+    )
     llm_end = [
         event
         for event in events
@@ -597,6 +611,113 @@ def test_relay_masks_input_and_output_pii_and_exports_usage_and_cost(tmp_path):
     usage = llm_end[0].category_profile["annotated_response"]["usage"]
     assert usage["total_tokens"] == 120
     assert usage["cost"]["total"] == pytest.approx(0.00014)
+
+
+def test_responses_mask_preserves_order_id_across_complete_workflow_events():
+    """Keep the confirmed ID intact while masking input and output telemetry."""
+    phone = "+39 333 123 4567"
+    application, responses = app_client(settings(pii_redaction="mask"))
+    events: list[object] = []
+    with TestClient(application) as client:
+        nemo_relay.subscribers.register("responses-complete-pii-order", events.append)
+        try:
+            response = client.post(
+                "/orders",
+                json={"request": f"I would like 2 keyboards, call me at {phone}"},
+            )
+            nemo_relay.subscribers.flush()
+        finally:
+            nemo_relay.subscribers.deregister("responses-complete-pii-order")
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+    assert responses.calls[0]["input"].endswith(phone)
+    ends = {
+        event.name: event
+        for event in events
+        if event.scope_category == "end"
+        and event.name
+        in {
+            "order_fulfillment_responses",
+            "register_order",
+            "build_order_response",
+        }
+    }
+    order_id = response.json()["order_id"]
+    assert ends["order_fulfillment_responses"].data["response"]["order_id"] == order_id
+    assert ends["register_order"].data["order_id"] == order_id
+    assert ends["build_order_response"].data["response"]["order_id"] == order_id
+    serialized = json.dumps(
+        events, default=lambda value: value.to_dict(), sort_keys=True
+    )
+    assert phone not in serialized
+    assert "************4567" in serialized
+
+
+def test_responses_mask_preserves_uuid_order_ids_in_real_relay_events():
+    """Keep UUIDs intact while the Responses telemetry sanitizer is active."""
+    identifiers = [
+        "b05e461a-2c81-4929-815d-959e89093bbf",
+        "b4a4b471-8a57-49a1-8016-218a23cdc7e8",
+        *(str(uuid4()) for _ in range(1000)),
+    ]
+    application, _ = app_client(settings(pii_redaction="mask"))
+    events: list[object] = []
+    with TestClient(application):
+        nemo_relay.subscribers.register("responses-pii-uuid-safety", events.append)
+        try:
+            for identifier in identifiers:
+                notice = f"Order {identifier} registered, available 8"
+                with trace_scope(
+                    "uuid_safety", nemo_relay.ScopeType.Agent, {"notice": notice}
+                ) as trace:
+                    trace["output"] = {"notice": notice}
+            nemo_relay.subscribers.flush()
+        finally:
+            nemo_relay.subscribers.deregister("responses-pii-uuid-safety")
+    serialized = json.dumps(
+        events, default=lambda value: value.to_dict(), sort_keys=True
+    )
+    for identifier in identifiers:
+        assert identifier in serialized
+
+
+@pytest.mark.parametrize(
+    ("phone_number", "is_masked"),
+    [
+        ("+39 333 123 4567", True),
+        ("+393331234567", True),
+        ("(333) 123 4567", True),
+        ("333 123 4567", True),
+        ("333-123-4567", False),
+    ],
+)
+def test_responses_phone_pattern_characterization(phone_number, is_masked):
+    """Characterize supported formats and the UUID-safe dashed limitation.
+
+    Args:
+        phone_number: Phone-shaped input sent to the complete application.
+        is_masked: Whether the explicit phone pattern must sanitize it.
+    """
+    application, responses = app_client(settings(pii_redaction="mask"))
+    events: list[object] = []
+    with TestClient(application) as client:
+        nemo_relay.subscribers.register("responses-phone-pattern", events.append)
+        try:
+            response = client.post(
+                "/orders",
+                json={
+                    "request": f"I would like 2 keyboards, call me at {phone_number}"
+                },
+            )
+            nemo_relay.subscribers.flush()
+        finally:
+            nemo_relay.subscribers.deregister("responses-phone-pattern")
+    serialized = json.dumps(
+        events, default=lambda value: value.to_dict(), sort_keys=True
+    )
+    assert response.status_code == 200
+    assert responses.calls[0]["input"].endswith(phone_number)
+    assert (phone_number not in serialized) is is_masked
 
 
 def test_packages_do_not_cross_import_each_other():

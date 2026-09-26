@@ -143,6 +143,9 @@ header automatically. Each order is exported as a single hierarchy with its
 request/response, LLM prompt/message history, and tool input/output. When
 enabled, Relay sanitizes recognized phone numbers in exported telemetry only;
 the OCI prompt and client-facing HTTP response remain unchanged.
+The UUID-safe policy masks international, parenthesized, and space-separated
+phone numbers, but deliberately leaves dashed-only `333-123-4567` unchanged to
+avoid corrupting UUID order IDs in traces.
 The extraction generation exports OCI token usage and uses the configured Relay
 pricing catalog to calculate an estimated cost per invocation; see the demo
 README for catalog and manual-verification instructions.

@@ -1,6 +1,7 @@
 # Specification 005: Phone-number PII redaction in exported traces
 
-Status: Implemented with offline verification on NeMo Relay 0.9.2.
+Status: Implemented with offline verification on NeMo Relay 0.9.2; updated to
+avoid UUID corruption.
 
 ## Objective
 
@@ -13,6 +14,18 @@ to Langfuse.
 For example, for the request `I would like 2 keyboards, call me at +39 333 123
 4567`, the model receives the original request, but Langfuse receives the
 configured masked or redacted form.
+
+## UUID-safe pattern correction
+
+Use the explicit `PHONE_NUMBER_PATTERN`
+`r"\+\d[\d ().\\-]{6,}\d|\(\d{2,4}\)[ ]?\d{2,4}(?:[ ]\d{2,4}){1,3}|\b\d{2,4}(?:[ ]\d{2,4}){2,3}\b"`
+instead of Relay's built-in `phone` detector. The built-in detector can mask
+digit groups in UUID order IDs; the explicit pattern preserves UUIDs while
+covering international, parenthesized, and space-separated phone numbers.
+With `mask`, retain four digits and render `+39 333 123 4567` as
+`************4567`; `redact` renders `[REDACTED]`. Dashed-only
+`333-123-4567` intentionally remains unmasked because it is indistinguishable
+from a UUID fragment for this safety objective.
 
 ## Scope and requirements
 
@@ -27,7 +40,8 @@ configured masked or redacted form.
   - `off` returns `None`;
   - `mask` and `redact` return a `pii_redaction.ComponentSpec` built with
     `pii_redaction.PiiRedactionConfig` and
-    `pii_redaction.BuiltinConfig(action=<setting>, detector="phone")`;
+    `pii_redaction.BuiltinConfig(action=<setting>, pattern=PHONE_NUMBER_PATTERN)`;
+    `mask` also sets `unmasked_suffix=4`;
   - validate the configuration with `pii_redaction.validate_config`; fail
     startup if any diagnostic has error severity.
 - `relay_lifespan()` must add this component to Relay's components only when it
@@ -36,9 +50,9 @@ configured masked or redacted form.
   `PiiRedactionConfig` does not expose `profiles`; do not use that field.
 - Do not configure a codec. Relay 0.9.2 produces the same result with and
   without `codec="openai_chat"` for this demo.
-- With the built-in `phone` detector, `mask` is expected to retain the final
-  four digits (for example, `+39 333 123 4567` becomes
-  `+** *** *** 4567`); `redact` produces `[REDACTED]`.
+- With the explicit phone pattern, `mask` retains the final four digits (for
+  example, `+39 333 123 4567` becomes `************4567`); `redact` produces
+  `[REDACTED]`.
 - Update `.env.example` with `PII_REDACTION=mask` and an English comment that
   describes the three values and states that redaction affects telemetry only,
   not the model prompt.
@@ -46,7 +60,7 @@ configured masked or redacted form.
   **NeMo Relay behavior**, including the phone-number `curl` example, expected
   Langfuse behavior for `order_fulfillment`, `extract_order`, and
   `build_order_response`, the unchanged LLM prompt and HTTP response, and the
-  limitation that only phone numbers are covered. Email addresses and other PII
+  covered formats and dashed-number limitation. Email addresses and other PII
   remain visible.
 - Add `PII_REDACTION` to the configuration-variable table. Update the root
   README and `Quickstart.md` with a second `curl` example. Replace statements
@@ -73,6 +87,10 @@ The configured `pii_redaction` component installs a sanitize guardrail on
 Relay events, rather than modifying real model calls. Therefore the original
 request reaches `langchain_oci` and OCI unchanged, while Relay sanitizes the
 events delivered to subscribers and OTLP exporters.
+
+The explicit pattern avoids the built-in detector's UUID false positives. It
+covers numbers beginning with `+`, parenthesized numbers, and space-separated
+numbers without matching UUID fragments.
 
 The guardrail covers the demo's manual Relay API usage: `llm.call`,
 `llm.call_end`, and `nemo_relay.scope.push` / `pop`. In the current flow, it
@@ -127,7 +145,7 @@ All tests use fake extractors and captured Relay subscriber events; they require
 neither OCI credentials nor network access.
 
 1. With `mask`, no serialized event contains `+39 333 123 4567`, and sanitized
-   events contain the masked value ending in `4567`.
+   events contain `************4567`.
 2. The fake extractor receives the original, unmasked phone number.
 3. The HTTP response remains unchanged: it confirms the order and returns the
    original request.
@@ -137,23 +155,24 @@ neither OCI credentials nor network access.
 6. With redaction and a test price catalog enabled, the completed LLM event
    retains prompt, completion, and total token counts and `usage.cost`.
 7. Redaction does not alter product name, quantity, `product_id`, or UUID
-   `order_id` in captured events.
-8. Parameterize detector characterization tests for `+39 333 123 4567`,
-   `+393331234567`, `333-123-4567`, and `(333) 123 4567`. Tests must not assert
-   sanitization for a format the pinned Relay detector does not recognize;
-   record the recognized and unrecognized formats observed in the README and
-   final implementation report.
-9. An invalid `PII_REDACTION` value fails settings loading with a clear error.
-10. `pii_component` returns `None` for `off` and a component configured with
+   `order_id` in captured events. Test at least 1,000 random UUIDs plus the two
+   reported UUID regressions using real Relay subscriber events.
+8. With a full application request containing a phone number, the confirmed
+   order ID is identical in root, `register_order`, and `build_order_response`
+   events while the phone is masked in input and output data.
+9. Verify `+39 333 123 4567`, `+393331234567`, `(333) 123 4567`, and
+   `333 123 4567` as masked. Document and test `333-123-4567` as intentionally
+   unmasked.
+10. An invalid `PII_REDACTION` value fails settings loading with a clear error.
+11. `pii_component` returns `None` for `off` and a component configured with
     the corresponding action for `mask` and `redact`.
 
-## Offline detector characterization
+## Offline pattern characterization
 
-The implementation's offline subscriber tests verified that the NeMo Relay
-0.9.2 built-in `phone` detector sanitizes all of these formats with the `mask`
-policy: `+39 333 123 4567`, `+393331234567`, `333-123-4567`, and
-`(333) 123 4567`. This result is limited to the pinned runtime and must be
-rechecked after a Relay upgrade.
+The implementation's offline subscriber tests verify that the explicit pattern
+sanitizes `+39 333 123 4567`, `+393331234567`, `(333) 123 4567`, and
+`333 123 4567`. `333-123-4567` is deliberately not covered to preserve UUID
+order IDs. Recheck this behavior after a Relay upgrade.
 
 ## Manual verification
 
@@ -168,7 +187,7 @@ curl -X POST http://127.0.0.1:8000/orders \
 
 Confirm that the order succeeds, demonstrating that the OCI LLM received the
 complete request. In Langfuse, confirm that the `order_fulfillment` trace and
-`extract_order` generation display `+** *** *** 4567`, and verify the same
+`extract_order` generation display `************4567`, and verify the same
 sanitization on the `build_order_response` span. Also confirm that the phone
 digits are not interpreted as an order quantity. If they are, report the result
 without changing the extraction prompt in this work.

@@ -8,6 +8,7 @@ Description:
 """
 
 import json
+from uuid import uuid4
 from unittest.mock import patch
 
 import nemo_relay
@@ -21,7 +22,7 @@ from demos.order_fulfillment.api import create_app
 from demos.order_fulfillment.config import AGENT_DIR, Settings, load_settings
 from demos.order_fulfillment.inventory import Inventory
 from demos.order_fulfillment.models import ExtractedOrder
-from demos.order_fulfillment.telemetry import pii_component
+from demos.order_fulfillment.telemetry import pii_component, trace_scope
 
 PHONE_NUMBER = "+39 333 123 4567"
 ORDER_REQUEST = f"I would like 2 keyboards, call me at {PHONE_NUMBER}"
@@ -152,11 +153,30 @@ def test_mask_sanitizes_events_but_not_model_or_http_response():
     assert response.json()["request"] == ORDER_REQUEST
     assert messages[0].content == ORDER_REQUEST
     assert PHONE_NUMBER not in serialized
-    assert "+** *** *** 4567" in serialized
+    assert "************4567" in serialized
     assert "keyboard" in serialized
     assert '"quantity": 2' in serialized
     assert '"product_id": "keyboard"' in serialized
     assert '"order_id":' in serialized
+
+
+def test_mask_preserves_the_confirmed_order_id_across_scope_events():
+    """Keep one order ID while masking the phone in all exported scope data."""
+    response, _, events = run_order("mask")
+    order_id = response.json()["order_id"]
+    ends = {
+        event.name: event
+        for event in events
+        if event.scope_category == "end"
+        and event.name
+        in {"order_fulfillment", "register_order", "build_order_response"}
+    }
+    assert ends["order_fulfillment"].data["response"]["order_id"] == order_id
+    assert ends["register_order"].data["order_id"] == order_id
+    assert ends["build_order_response"].data["response"]["order_id"] == order_id
+    serialized = serialized_events(events)
+    assert PHONE_NUMBER not in serialized
+    assert "************4567" in serialized
 
 
 def test_redact_replaces_phone_number_in_events():
@@ -193,16 +213,62 @@ def test_mask_retains_token_usage_and_pricing(tmp_path):
 
 @pytest.mark.parametrize(
     "phone_number",
-    ["+39 333 123 4567", "+393331234567", "333-123-4567", "(333) 123 4567"],
+    ["+39 333 123 4567", "+393331234567", "(333) 123 4567", "333 123 4567"],
 )
-def test_phone_format_characterization(phone_number):
-    """Verify the phone formats recognized by the pinned built-in detector."""
+def test_supported_phone_formats_are_masked(phone_number):
+    """Mask every documented phone format with the explicit pattern."""
     request = f"I would like 2 keyboards, call me at {phone_number}"
     response, messages, events = run_order("mask", request)
     serialized = serialized_events(events)
     assert response.status_code == 200
     assert messages[0].content == request
     assert phone_number not in serialized
+
+
+def test_dashed_phone_number_is_intentionally_not_masked():
+    """Document the UUID-safety tradeoff for dashed-only phone numbers."""
+    phone_number = "333-123-4567"
+    _, messages, events = run_order(
+        "mask", f"I would like 2 keyboards, call me at {phone_number}"
+    )
+    assert messages[0].content.endswith(phone_number)
+    assert phone_number in serialized_events(events)
+
+
+def test_mask_preserves_uuid_order_ids_in_real_relay_events():
+    """Keep UUIDs intact while sanitizing Relay subscriber events."""
+    identifiers = [
+        "b05e461a-2c81-4929-815d-959e89093bbf",
+        "b4a4b471-8a57-49a1-8016-218a23cdc7e8",
+        *(str(uuid4()) for _ in range(1000)),
+    ]
+    events: list[object] = []
+    settings = Settings(
+        region="us-chicago-1",
+        model_id="test-model",
+        compartment_id="test",
+        pii_redaction="mask",
+    )
+    app = create_app(
+        settings,
+        RunnableLambda(lambda _: raw_extraction()),
+        Inventory.load(AGENT_DIR / "catalog.json"),
+    )
+    with TestClient(app):
+        nemo_relay.subscribers.register("test-pii-uuid-safety", events.append)
+        try:
+            for identifier in identifiers:
+                notice = f"Order {identifier} registered, available 8"
+                with trace_scope(
+                    "uuid_safety", nemo_relay.ScopeType.Agent, {"notice": notice}
+                ) as trace:
+                    trace["output"] = {"notice": notice}
+            nemo_relay.subscribers.flush()
+        finally:
+            nemo_relay.subscribers.deregister("test-pii-uuid-safety")
+    serialized = serialized_events(events)
+    for identifier in identifiers:
+        assert identifier in serialized
 
 
 def test_invalid_pii_redaction_setting_fails_validation(tmp_path, monkeypatch):
@@ -231,7 +297,9 @@ def test_pii_component_uses_requested_action(mode):
     )
     assert component is not None
     assert component.config.builtin.action == mode
-    assert component.config.builtin.detector == "phone"
+    assert component.config.builtin.detector is None
+    assert component.config.builtin.pattern
+    assert component.config.builtin.unmasked_suffix == (4 if mode == "mask" else None)
 
 
 def test_off_does_not_create_pii_component():

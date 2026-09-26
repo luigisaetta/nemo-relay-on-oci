@@ -27,6 +27,17 @@ ID, and availability—without changing the HTTP response contract. Offline
 subscriber tests verify `output.response.status` and
 `output.response.order_id` on the root end event.
 
+## Observability correction: UUID-safe phone redaction
+
+The telemetry PII component must use the explicit `PHONE_NUMBER_PATTERN`
+defined in Specification 005 rather than Relay's built-in `phone` detector.
+The built-in detector can mask digit groups within UUID order IDs. The pattern
+masks international, parenthesized, and space-separated telephone numbers,
+preserves UUIDs, and intentionally does not mask dashed-only numbers such as
+`333-123-4567`. Subscriber tests must cover at least 1,000 random UUIDs, the
+reported UUID examples, and a complete masked application request whose order
+ID is identical in root, registration, and response-building events.
+
 ## Confirmed requirements
 
 - Every agent has a dedicated folder under `demos/`.

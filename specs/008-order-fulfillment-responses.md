@@ -56,6 +56,25 @@ Langfuse as text-only output. The wrapper retains the whole response JSON in
 Langfuse while leaving the HTTP API unchanged. Subscriber tests verify root
 `output.response.status` and `output.response.order_id`.
 
+## Observability corrections: UUID-safe PII and readable LLM input
+
+The Responses demo must independently use the explicit `PHONE_NUMBER_PATTERN`
+defined in Specification 005, rather than Relay's built-in `phone` detector,
+to avoid corrupting UUID order IDs. It masks international, parenthesized, and
+space-separated numbers, intentionally leaving dashed-only `333-123-4567`
+unmasked. Relay subscriber tests cover at least 1,000 random UUIDs, the two
+reported UUID examples, all supported phone formats, and a complete masked
+order whose ID is identical in root, registration, and response-building
+events.
+
+For the managed `extract_order` call, pass metadata
+`{"langfuse.observation.input": "system: " + EXTRACTION_PROMPT + "\\nuser: " + request}`.
+Configure the Responses OTLP endpoint with
+`promote_metadata_prefixes=["langfuse."]` so Langfuse uses this readable input
+instead of the technical Responses request JSON. The metadata is Relay
+telemetry and must receive the same PII sanitization. Tests verify its exact
+format, masked phone content, and endpoint configuration.
+
 ## Scope and exclusions
 
 - The new demo is a complete, deliberately duplicated copy of the first demo;

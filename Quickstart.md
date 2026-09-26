@@ -187,10 +187,12 @@ curl -X POST http://127.0.0.1:8000/orders \
 ```
 
 The model and HTTP response retain the original request. Langfuse shows the
-phone number as `+** *** *** 4567` in the exported trace. Set
+phone number as `************4567` in the exported trace. Set
 `PII_REDACTION=redact` for `[REDACTED]`, or `off` to disable this phone-only
 sanitization. It does not protect email addresses or other sensitive data, so
-continue using synthetic inputs.
+continue using synthetic inputs. The UUID-safe pattern also covers
+`+393331234567`, `(333) 123 4567`, and `333 123 4567`, but deliberately leaves
+`333-123-4567` unchanged because masking it could corrupt UUID order IDs.
 
 The default `PROMPT_GUARD=combined` also checks prompt injection before the
 model call. The two requests below demonstrate each layer:

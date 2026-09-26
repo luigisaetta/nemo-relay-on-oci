@@ -29,6 +29,13 @@ from nemo_relay.observability import (
 from demos.order_fulfillment_responses.config import Settings, create_guardrails_client
 from demos.order_fulfillment_responses.prompt_guard import build_prompt_guard
 
+# The built-in ``phone`` detector masks digit groups within UUID order IDs.
+# This pattern covers supported phone formats without matching UUID fragments.
+PHONE_NUMBER_PATTERN = (
+    r"\+\d[\d ().\-]{6,}\d|\(\d{2,4}\)[ ]?\d{2,4}(?:[ ]\d{2,4}){1,3}"
+    r"|\b\d{2,4}(?:[ ]\d{2,4}){2,3}\b"
+)
+
 
 def trace_endpoints(settings: Settings) -> list[OpenTelemetryEndpointConfig]:
     """Build the optional Langfuse or generic OTLP endpoint.
@@ -88,6 +95,7 @@ def trace_endpoints(settings: Settings) -> list[OpenTelemetryEndpointConfig]:
             attribute_mappings=[
                 {"key": "llm.cost.total", "alias": "gen_ai.usage.cost"}
             ],
+            promote_metadata_prefixes=["langfuse."],
         )
     ]
 
@@ -135,7 +143,9 @@ def pii_component(settings: Settings) -> pii_redaction.ComponentSpec | None:
         return None
     config = pii_redaction.PiiRedactionConfig(
         builtin=pii_redaction.BuiltinConfig(
-            action=settings.pii_redaction, detector="phone"
+            action=settings.pii_redaction,
+            pattern=PHONE_NUMBER_PATTERN,
+            unmasked_suffix=4 if settings.pii_redaction == "mask" else None,
         )
     )
     if any(

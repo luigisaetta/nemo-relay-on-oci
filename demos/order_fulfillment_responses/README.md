@@ -79,10 +79,26 @@ numbers in input and model output telemetry, while OCI receives the original
 request. The strict JSON schema sent through Responses is generated from the
 Pydantic model without OpenAI internal APIs.
 
+The `extract_order` generation uses the same readable Langfuse input as the
+first demo: `system: <extraction prompt>` followed by `user: <request>`, rather
+than the technical Responses request JSON. Phone numbers in this metadata are
+sanitized along with other exported telemetry.
+
 The root and `build_order_response` scope outputs put the serialized order
 result under `response`, so Langfuse renders the complete JSON response,
 including status and order ID, rather than only the top-level `message` text.
 The HTTP response is unchanged.
+
+### PII redaction
+
+With `PII_REDACTION=mask`, `+39 333 123 4567` is exported as
+`************4567`; `redact` exports `[REDACTED]`, and `off` leaves telemetry
+unchanged. The UUID-safe pattern also masks `+393331234567`, `(333) 123 4567`,
+and `333 123 4567`, while preserving order IDs. `333-123-4567` is deliberately
+not masked because it cannot be distinguished from a UUID fragment without
+reintroducing the observed order-ID corruption. The OCI request and HTTP
+response retain the original phone number. Only these phone formats are
+covered; continue using synthetic data and do not submit secrets or other PII.
 
 ### Known OCI Italian false positive
 
