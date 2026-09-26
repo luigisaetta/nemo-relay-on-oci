@@ -19,6 +19,8 @@ when implemented and verified.
 The repository also includes specifications, pinned dependencies, and offline
 acceptance tests.
 
+Deferred platform support and future demo work are tracked in [TODO.md](TODO.md).
+
 ## Quick start
 
 The first demo shows how NeMo Relay traces an agent workflow and exports its

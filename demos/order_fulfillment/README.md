@@ -68,6 +68,12 @@ The copy command preserves an existing `.env`. Edit the local file:
 | `MODEL_PRICING_FILE` | `demos/order_fulfillment/pricing.example.json` | Relay JSON model-pricing catalog for estimated LLM cost |
 | `PII_REDACTION` | `mask` | Phone-number telemetry policy: `mask`, `redact`, or `off` |
 
+### Tested configurations
+
+| Region | Model | Structured output | Reasoning effort | Date | Verified by |
+| --- | --- | --- | --- | --- | --- |
+| `eu-frankfurt-1` | `openai.gpt-5.6-sol` | `function_calling` | `NONE` | 2026-09-26 | L. Saetta |
+
 The endpoint is derived as
 `https://inference.generativeai.<OCI_REGION>.oci.oraclecloud.com` for OCI's
 commercial realm. Existing process variables override the agent's `.env`.
@@ -88,6 +94,10 @@ the repository root:
 
 The script uses the active environment's Python. It does not activate Conda.
 Stop the server with Ctrl+C.
+
+Run `python -m demos.order_fulfillment.doctor` in the active environment before
+starting the server to diagnose user configuration, OCI access, Langfuse, and
+pricing safely. Use `--offline` when external checks must not run.
 
 Open [API documentation](http://127.0.0.1:8000/docs) or send:
 

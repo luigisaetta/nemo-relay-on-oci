@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Added macOS Apple Silicon setup, setup diagnostics, and local
+  Docker API-key instructions for the order-fulfillment demo.
 - 2026-09-26: Added the setup-and-doctor design specification for the
   order-fulfillment demo.
 - 2026-09-26: Added configurable phone-number PII redaction to order-fulfillment Relay

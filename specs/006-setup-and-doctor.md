@@ -1,6 +1,7 @@
 # Specification 006: macOS setup and diagnostic doctor
 
-Status: Planned; implementation requires maintainer-verified OCI defaults.
+Status: Implemented; offline checks verified on macOS Apple Silicon with the
+maintainer's selected OCI defaults.
 
 ## Objective
 
@@ -131,9 +132,9 @@ as placeholders. Add a **Tested configurations** table to the demo README with
 exactly one row: region, model, structured-output method, reasoning effort,
 date, and verifier. Do not add unverified models.
 
-The concrete region, model ID, and reasoning-effort values are intentionally
-not invented by this specification; the maintainer must provide or verify them
-before implementation can complete.
+The verified template uses `eu-frankfurt-1`, `openai.gpt-5.6-sol`, and `NONE`.
+These values came from the maintainer's local verified configuration; future
+models must not be added without equivalent verification.
 
 ### Local Docker execution with API keys
 

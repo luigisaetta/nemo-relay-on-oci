@@ -46,32 +46,20 @@ cd nemo-relay-on-oci
 If you already have a checkout, use its root directory for every remaining
 command.
 
-## 2. Create the required Conda environment
+## 2. Run setup
 
-The project requires Python 3.11 or later and uses an environment named
-`nemo-relay-on-oci`. Create it if it does not already exist:
-
-```bash
-conda create -n nemo-relay-on-oci python=3.11
-```
-
-Activate the environment and confirm the interpreter version:
+The tested path is macOS Apple Silicon with Conda and Python 3.11. The setup
+script creates the environment when absent, installs runtime dependencies,
+checks them, and creates `.env` without overwriting an existing file:
 
 ```bash
-conda activate nemo-relay-on-oci
-python --version
+./scripts/setup.sh
 ```
 
-Install the runtime and development dependencies, then verify that their
-resolved versions are compatible:
-
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pip check
-```
-
-For non-interactive shells, replace `python` above with
-`conda run -n nemo-relay-on-oci python`.
+Other platforms are untested; see [TODO.md](TODO.md). macOS Intel is not
+supported because NeMo Relay 0.9.2 has no macOS x86_64 wheel. Development
+dependencies are only required by contributors and remain documented in the
+root README.
 
 ## 3. Configure OCI access and the demo
 
@@ -81,13 +69,12 @@ Create a local configuration file without overwriting an existing one:
 cp -n demos/order_fulfillment/.env.example demos/order_fulfillment/.env
 ```
 
-Open `demos/order_fulfillment/.env` and set the OCI and Langfuse values:
+Open `demos/order_fulfillment/.env` and set only the compartment and Langfuse
+values. The template contains the maintainer-tested region, model, structured
+output method, and reasoning effort:
 
 ```dotenv
-OCI_REGION=<oci-region>
-MODEL_ID=<oci-model-id>
 OCI_COMPARTMENT_ID=<compartment-ocid>
-OCI_AUTH_TYPE=API_KEY
 LANGFUSE_BASE_URL=https://cloud.langfuse.com
 LANGFUSE_PUBLIC_KEY=pk-lf-your-project-key
 LANGFUSE_SECRET_KEY=sk-lf-your-project-key
@@ -125,7 +112,20 @@ explicitly provisional and are not OCI invoice rates. Review and replace the
 catalog with applicable OCI billing values before using the estimate for
 financial reporting.
 
-## 4. Start the agent
+## 4. Run doctor
+
+Before starting the service, diagnose the local configuration:
+
+```bash
+conda activate nemo-relay-on-oci
+python -m demos.order_fulfillment.doctor
+```
+
+Use `--skip-model-call` to avoid the small OCI test call, or `--offline` to
+skip both OCI and Langfuse network calls. Warnings do not fail doctor; errors
+include a corrective action and return exit code 1.
+
+## 5. Start the agent
 
 From the repository root, with `nemo-relay-on-oci` active, run:
 
@@ -136,7 +136,7 @@ From the repository root, with `nemo-relay-on-oci` active, run:
 The FastAPI service starts at `http://127.0.0.1:8000`. Keep this terminal open
 while using the demo; stop it with `Ctrl+C`.
 
-## 5. Verify the service and submit an order
+## 6. Verify the service and submit an order
 
 In a second terminal, activate the same environment if necessary and call the
 health endpoint:
@@ -177,6 +177,33 @@ submitting an order. It contains the agent steps, prompts, responses, token
 usage, and estimated invocation cost. When enabled, phone-number redaction is
 applied before export. Trace export is batched, so it may take a short time to
 appear.
+
+## Run with Docker
+
+Build the existing image from the repository root. For local API-key use, mount
+the OCI directory read-only at the same absolute host path so an absolute
+`key_file` in the OCI config remains valid inside the container:
+
+```bash
+docker build -f demos/order_fulfillment/Dockerfile -t order-fulfillment:local .
+docker run --rm -p 8080:8080 \
+  --env-file demos/order_fulfillment/.env \
+  -e OCI_AUTH_TYPE=API_KEY \
+  --mount type=bind,src="$HOME/.oci",dst="$HOME/.oci",readonly \
+  order-fulfillment:local
+```
+
+Run doctor in the image with the same `--env-file` and mount before invoking
+`/orders`. If doctor reports that the private key is unreadable, the container
+cannot see the path named by `key_file`; use the same-path mount above. Neither
+the OCI files nor `.env` are copied into the image.
+
+## Troubleshooting
+
+Run `python -m demos.order_fulfillment.doctor` first. It identifies invalid
+environment values, OCI authentication failures, structured-output problems,
+Langfuse connectivity, pricing coverage, and the active PII policy without
+printing credentials or OCIDs.
 
 ## Next steps
 
