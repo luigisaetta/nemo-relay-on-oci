@@ -113,7 +113,9 @@ all of the following steps in the required Conda environment:
    verify that a subsequent run in check mode passes.
 2. **Static analysis:** run Pylint on all Python code, including tests, and
    fix **every** reported issue. A syntax-only check does not replace Pylint.
-   The command must succeed with no unresolved findings.
+   The command must succeed with no unresolved findings. R0801 duplicate-code
+   is disabled because demos are intentionally independent full copies; all
+   other Pylint findings must be fixed.
 3. **Tests and coverage:** prepare or update tests and run them with pytest
    and pytest-cov. All tests must pass, and overall application code coverage
    must be **at least 80%**, enforced with `--cov-fail-under=80`. Include

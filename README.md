@@ -64,6 +64,7 @@ capabilities demonstrated by each demo.
 | Demo | Functionality |
 | --- | --- |
 | [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** Demonstrates:<ul><li>OCI LLM extraction, JSON inventory, and simulated order registration in an explicit LangGraph workflow.</li><li>NeMo Relay tracing of named agent steps, prompts, responses, token usage, and estimated per-invocation cost.</li><li>Configurable phone-number PII redaction in exported Relay telemetry, without changing the OCI prompt or HTTP response.</li><li>Layered local and OCI prompt-injection guardrails before model invocation.</li><li>Direct OpenTelemetry export of those traces to Langfuse.</li><li>A `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest.</li></ul> |
+| [Order fulfillment — Responses API](demos/order_fulfillment_responses/README.md) | **Implemented; live IAM verification pending.** Independent copy of the order workflow using the official OpenAI SDK against OCI Responses API, `oci-genai-auth`, and Relay-managed `llm.execute` with native token, pricing, PII-redaction, and guardrail behavior. |
 
 ## Development environment
 
@@ -100,6 +101,7 @@ on other platforms or Python versions must be verified separately.
 | `langgraph` | 1.2.12 | Agent workflow orchestration |
 | `langchain-oci` | 0.3.2 | OCI Generative AI models through `ChatOCIGenAI` |
 | `oci` | 2.187.0 | OCI SDK and authentication |
+| `openai` / `oci-genai-auth` | 3.19.2 / 1.1.1 | OCI OpenAI-compatible Responses API client and IAM HTTPX authentication |
 | `black` | 26.5.1 | Formatting |
 | `pylint` | 4.0.9 | Static analysis |
 | `fastapi` / `uvicorn` | 0.141.1 / 0.54.0 | HTTP API and server |

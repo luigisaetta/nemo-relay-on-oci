@@ -49,6 +49,7 @@ mypy_extensions==1.1.0
 nemo-relay==0.9.2
 numpy==2.4.6
 oci==2.187.0
+oci-genai-auth==1.1.1
 oci-openai==1.1.0
 openai==3.19.2
 orjson==3.12.0

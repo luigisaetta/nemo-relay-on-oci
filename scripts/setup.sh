@@ -24,4 +24,8 @@ if [ ! -f demos/order_fulfillment/.env ]; then
     cp demos/order_fulfillment/.env.example demos/order_fulfillment/.env
 fi
 
-echo "Next steps: edit demos/order_fulfillment/.env, run python -m demos.order_fulfillment.doctor, then run ./demos/order_fulfillment/start.sh"
+if [ ! -f demos/order_fulfillment_responses/.env ]; then
+    cp demos/order_fulfillment_responses/.env.example demos/order_fulfillment_responses/.env
+fi
+
+echo "Next steps: configure one demo .env, run its doctor, then start that demo from the repository root."

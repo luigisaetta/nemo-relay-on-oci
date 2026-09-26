@@ -4,6 +4,8 @@ nemo-relay[langgraph]==0.9.2
 langgraph==1.2.12
 langchain-oci==0.3.2
 oci==2.187.0
+openai==3.19.2
+oci-genai-auth==1.1.1
 # Relay includes its native OTLP exporter; the collector runs separately.
 fastapi==0.141.1
 uvicorn==0.54.0

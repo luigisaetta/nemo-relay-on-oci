@@ -7,6 +7,12 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Aligned the Responses API extraction prompt and LLM trace name
+  with the original order-fulfillment demo, documented the OCI Italian
+  guardrail false positive, and expanded the dedicated offline test suite.
+- 2026-09-26: Added the independent OCI Responses API order-fulfillment demo,
+  including Relay-managed Responses calls, IAM authentication, offline tests,
+  and documentation. Live IAM verification remains pending.
 - 2026-09-26: Added the design specification for the independent
   order-fulfillment OCI Responses API demo.
 - 2026-09-26: Fixed prompt-guard fail-open telemetry to use Relay's

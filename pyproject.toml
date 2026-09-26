@@ -4,6 +4,10 @@ target-version = ['py311']
 [tool.pylint.main]
 py-version = '3.11'
 
+[tool.pylint."messages control"]
+# Maintainer decision: demos are intentionally independent full copies.
+disable = ['R0801']
+
 [tool.pytest.ini_options]
 testpaths = ['tests']
 addopts = '--cov=demos --cov-report=term-missing --cov-fail-under=80'

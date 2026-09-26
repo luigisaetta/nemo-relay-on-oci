@@ -139,6 +139,23 @@ From the repository root, with `nemo-relay-on-oci` active, run:
 The FastAPI service starts at `http://127.0.0.1:8000`. Keep this terminal open
 while using the demo; stop it with `Ctrl+C`.
 
+### Run the Responses API variant
+
+The independent Responses API variant has the same HTTP contract but uses the
+official OpenAI SDK with OCI IAM authentication and Relay-managed Responses
+execution. Configure its own `.env` and run it from the repository root:
+
+```bash
+cp -n demos/order_fulfillment_responses/.env.example demos/order_fulfillment_responses/.env
+conda activate nemo-relay-on-oci
+python -m demos.order_fulfillment_responses.doctor
+./demos/order_fulfillment_responses/start.sh
+```
+
+Both demos use port 8000: stop one before starting the other. See the
+[Responses API demo README](demos/order_fulfillment_responses/README.md) for
+its IAM, observability, and manual-verification requirements.
+
 ## 6. Verify the service and submit an order
 
 In a second terminal, activate the same environment if necessary and call the

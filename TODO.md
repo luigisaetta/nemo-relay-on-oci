@@ -12,6 +12,13 @@
 
 ## Planned demo improvements
 
+- **Planned — OCI Enterprise AI deployment for order_fulfillment_responses:**
+  Add a Dockerfile and `agent.yaml` after the separate deployment design work.
+- **Planned — Responses API streaming:** Add streaming through
+  `llm.stream_execute` to the Responses API demo.
+- **Needs maintainer environment — Responses resource principal:** Verify
+  `RESOURCE_PRINCIPAL` authentication for the Responses client.
+
 - **Needs maintainer review — OCI guardrail version:** Re-evaluate the pinned
   `OCI_GUARDRAIL_VERSION` against OCI service changes and known bypasses.
 - **Planned — Relay LLM error-status export:** Investigate why selected LLM

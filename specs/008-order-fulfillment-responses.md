@@ -1,7 +1,7 @@
 # Specification 008: Order fulfillment through OCI Responses API
 
-Status: Proposed and authorized for implementation. This specification records
-the design before implementation begins.
+Status: Implemented offline; live OCI/IAM verification remains pending with the
+maintainer's credentials.
 
 Related specifications: [Specification 001](001-dependencies-and-observability.md)
 defines shared dependencies and observability; [Specifications 003](003-llm-token-usage-and-cost.md),
@@ -23,6 +23,29 @@ The LLM request must pass through NeMo Relay's managed
 `nemo_relay.llm.execute` pipeline with `OpenAIResponsesCodec`. This makes
 tokens, pricing, PII redaction, and conditional execution guardrails native
 Relay behaviors.
+
+## Review corrections (2026-09-26)
+
+- The Responses variant's `EXTRACTION_PROMPT` must be byte-for-byte identical
+  to the prompt in demo 002, except that it omits only demo 002's final
+  schema-interpolation line. A source-text test, which does not import demo
+  002, enforces this deliberate alignment without weakening package
+  independence.
+- The managed Relay call is named `extract_order`, matching demo 002's LLM
+  span. There is no enclosing `extract_order` agent scope and the raw Responses
+  payload is not saved as an agent-scope output. Pricing remains provider `oci`
+  and must be tested with the local pricing catalog.
+- The complete demo-002 test coverage is mirrored and adapted for a mocked
+  OpenAI Responses client. It covers every HTTP business branch, inventory
+  concurrency, real Relay fail-open warning events, PII modes, telemetry,
+  configuration, guardrail cleanup, and doctor checks. The Responses package
+  itself must maintain at least 80% coverage.
+- Pylint R0801 is the only disabled check because independent full copies are a
+  maintainer-approved repository design. All other Pylint findings remain
+  mandatory fixes.
+- OCI Guardrails 1.1.3 has a verified Italian false positive for imperative
+  `chiamami al <number>` phrasing. Documentation must recommend `il mio numero
+  è <number>` in Italian presentations; no guardrail code change is allowed.
 
 ## Scope and exclusions
 
@@ -125,7 +148,7 @@ test validates its consistency with the Pydantic model.
 - `model`, `instructions=EXTRACTION_PROMPT`, original user `input`, and
   `text.format` using named, strict `json_schema` output;
 - optional normalized `reasoning`;
-- `nemo_relay.llm.execute("oci", ..., model_name=MODEL, codec=OpenAIResponsesCodec(),
+- `nemo_relay.llm.execute("extract_order", ..., model_name=MODEL, codec=OpenAIResponsesCodec(),
   response_codec=OpenAIResponsesCodec())`, invoked from the synchronous node
   with `nemo_relay.utils.run_sync`.
 
@@ -212,7 +235,8 @@ OCI credentials nor network access, and cover the following:
 
 ## Traceability
 
-Implementation belongs in `demos/order_fulfillment_responses/`; its offline
-tests belong under `tests/order_fulfillment_responses/` or use an equally clear
-prefix. The implementation, tests, root README, Quickstart, TODO, dependency
-records, and changelog must be updated together when work begins.
+Implementation is in `demos/order_fulfillment_responses/`; offline tests use
+the recognizable `tests/test_order_fulfillment_responses.py` prefix. The
+implementation, tests, root README, Quickstart, TODO, dependency records, and
+changelog have been updated together. The remaining acceptance activity is the
+documented live OCI, IAM, and Langfuse verification by the maintainer.

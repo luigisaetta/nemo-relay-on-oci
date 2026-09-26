@@ -14,6 +14,11 @@ using LangGraph, NVIDIA NeMo Relay, and OCI Generative AI through
 - Use the published `nemo-relay[langgraph]` integration and `langchain-oci`.
   Relay 0.9.2 does not publish an `oci` extra. OCI integration is composed
   through LangChain; a dedicated Relay OCI adapter is not assumed.
+- Pin `openai 3.19.2` and `oci-genai-auth 1.1.1` for the independent
+  Responses API demo. They are shared environment dependencies: the original
+  LangChain demo receives but does not import them. The latter supplies OCI
+  user-principal and resource-principal HTTPX authentication for the official
+  OpenAI SDK; no OpenAI API-key authentication is configured.
 - Use Relay's built-in OTLP exporter for Relay events. No separate Python
   OpenTelemetry SDK or exporter is required for this path. Revisit this
   decision if a future demo requires custom Python OpenTelemetry spans.
@@ -22,8 +27,11 @@ using LangGraph, NVIDIA NeMo Relay, and OCI Generative AI through
 
 ## Architecture and configuration
 
-Intended model path: LangGraph -> Relay LangChain instrumentation ->
-`langchain_oci.ChatOCIGenAI` -> OCI Generative AI.
+The first demo's model path is LangGraph -> Relay LangChain instrumentation ->
+`langchain_oci.ChatOCIGenAI` -> OCI Generative AI. The independent Responses
+variant uses LangGraph -> Relay managed `llm.execute` with
+`OpenAIResponsesCodec` -> official `openai` SDK -> OCI's OpenAI-compatible
+Responses endpoint, authenticated by `oci-genai-auth`.
 
 Intended trace path: Relay scopes and call events -> built-in OTLP exporter
 -> OpenTelemetry Collector -> a backend selected later.

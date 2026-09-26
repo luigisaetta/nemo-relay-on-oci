@@ -262,6 +262,16 @@ active and emits a safe warning event; `block` rejects the request instead.
 Detection is intentionally not exhaustive: for example, an order containing
 "ignore any stock limits" is not guaranteed to be classified as an attack.
 
+#### Known OCI Italian false positive
+
+In live `eu-frankfurt-1` verification with OCI Guardrails 1.1.3, the normal
+Italian imperative `chiamami al <number>` was flagged as prompt injection. For
+example, `Vorrei due belle tastiere, chiamami al +39 333 123 4567` received
+score 1.0. For Italian presentations use `il mio numero è <number>` instead:
+`Vorrei due tastiere, il mio numero è +39 333 123 4567` was not flagged. This
+is an OCI classifier limitation; the local guardrail code deliberately does
+not special-case it.
+
 ### Connect directly to remote Langfuse
 
 Edit the agent's `.env` with the URL and project API keys:
