@@ -4,7 +4,8 @@
 
 - **Planned — Windows:** Provide a `setup.sh` equivalent, startup independent of
   `start.sh`, PowerShell `curl` examples, Windows-safe replacement for `cp -n`,
-  local Docker instructions, and doctor tests.
+  and doctor tests. Evaluate a separate local container option; it must not
+  modify the Enterprise AI Dockerfile.
 - **Planned — Linux:** Test setup and doctor on supported Linux platforms.
 - **Planned — macOS Intel:** Support remains unavailable until NeMo Relay
   publishes a macOS x86_64 wheel.

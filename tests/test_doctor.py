@@ -18,6 +18,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from demos.order_fulfillment.config import Settings
 from demos.order_fulfillment import doctor
+from demos.order_fulfillment.models import ExtractedOrder
 
 
 def settings(**overrides) -> Settings:
@@ -126,14 +127,10 @@ def test_settings_detects_placeholder_and_validation_failure(tmp_path):
     environment.write_text("MODEL_ID=test\n")
     with (
         patch.object(doctor, "AGENT_DIR", tmp_path),
-        patch.object(
-            doctor,
-            "load_settings",
-            side_effect=ValueError("pii_redaction invalid secret"),
-        ),
+        patch.object(doctor, "load_settings", side_effect=InvalidSettingsError()),
     ):
         assert doctor.check_settings(result) is None
-    assert "configuration" in lines[0]
+    assert "OCI_REGION" in lines[0]
     assert "secret" not in "\n".join(lines)
 
 
@@ -176,7 +173,9 @@ def test_model_check_success_errors_and_skip():
     result, lines = reporter()
     extractor = Mock()
     extractor.invoke.return_value = {
-        "raw": SimpleNamespace(usage_metadata={"total_tokens": 7})
+        "raw": SimpleNamespace(usage_metadata={"total_tokens": 7}),
+        "parsed": ExtractedOrder(items=[{"product": "keyboard", "quantity": 1}]),
+        "parsing_error": None,
     }
     with (
         patch.object(doctor, "create_extractor", return_value=extractor),
@@ -196,6 +195,37 @@ def test_model_check_success_errors_and_skip():
     result, lines = reporter()
     doctor.check_model(settings(), result, True)
     assert lines == ["ℹ️ OCI model call: skipped"]
+
+
+class InvalidSettingsError(ValueError):
+    """Provide Pydantic-like error details without exposing a bad value."""
+
+    def errors(self):
+        """Return the invalid settings field location.
+
+        Returns:
+            Validation details compatible with Pydantic.
+        """
+        return [{"loc": ("region",)}]
+
+
+def test_model_check_rejects_unparsed_and_unexpected_responses():
+    """Report structured-output and unexpected errors without provider text."""
+    result, lines = reporter()
+    extractor = Mock()
+    extractor.invoke.return_value = {"parsed": None, "parsing_error": ValueError("x")}
+    with patch.object(doctor, "create_extractor", return_value=extractor):
+        doctor.check_model(settings(), result, False)
+    assert "could not be parsed" in lines[0]
+    assert "OCI_STRUCTURED_OUTPUT_METHOD" in lines[1]
+
+    result, lines = reporter()
+    with patch.object(
+        doctor, "create_extractor", side_effect=RuntimeError("private details")
+    ):
+        doctor.check_model(settings(), result, False)
+    assert "RuntimeError" in lines[0]
+    assert "private details" not in "\n".join(lines)
 
 
 def test_langfuse_handles_disabled_offline_and_remote_errors():
@@ -222,6 +252,44 @@ def test_langfuse_handles_disabled_offline_and_remote_errors():
         doctor.check_langfuse(configured, result, False)
     assert result.errors == 1
     assert "sk-lf-test-secret" not in "\n".join(lines)
+
+
+def test_langfuse_non_json_success_uses_generic_project_name():
+    """Accept a successful Langfuse status even when its body is not JSON."""
+    configured = settings(
+        langfuse_base_url="https://cloud.langfuse.com",
+        langfuse_public_key="pk",
+        langfuse_secret_key="sk",
+    )
+    response = Mock(status_code=200)
+    response.json.side_effect = ValueError("not json")
+    result, lines = reporter()
+    with (
+        patch.object(doctor, "trace_endpoints"),
+        patch.object(doctor.requests, "get", return_value=response),
+    ):
+        doctor.check_langfuse(configured, result, False)
+    assert lines == ["✅ Langfuse: connected to configured project"]
+
+
+def test_langfuse_empty_project_list_rejects_bad_credentials():
+    """Reject a successful response that has no project for the API keys."""
+    configured = settings(
+        langfuse_base_url="https://cloud.langfuse.com",
+        langfuse_public_key="pk-invalid",
+        langfuse_secret_key="sk",
+    )
+    response = Mock(status_code=200)
+    response.json.return_value = {"data": []}
+    result, lines = reporter()
+    with (
+        patch.object(doctor, "trace_endpoints"),
+        patch.object(doctor.requests, "get", return_value=response),
+    ):
+        doctor.check_langfuse(configured, result, False)
+    assert result.errors == 1
+    assert "no project is associated" in lines[0]
+    assert "pk-invalid" not in "\n".join(lines)
 
 
 def test_pricing_skips_default_and_checks_custom_catalog(tmp_path):
@@ -274,3 +342,4 @@ def test_setup_script_is_valid_posix_shell():
     script = Path("scripts/setup.sh")
     assert script.is_file()
     assert subprocess.run(["sh", "-n", str(script)], check=False).returncode == 0
+    assert 'cd "$(dirname "$0")/.."' in script.read_text(encoding="utf-8")

@@ -24,11 +24,14 @@ import oci
 from oci.exceptions import ServiceError
 from langchain_core.messages import HumanMessage
 import requests
-from requests.exceptions import RequestException
 
-from demos.order_fulfillment.api import configure_warning_filters
+from demos.order_fulfillment.api import (
+    OCI_TRANSPORT_EXCEPTIONS,
+    configure_warning_filters,
+)
 from demos.order_fulfillment.config import (
     AGENT_DIR,
+    ENVIRONMENT_FIELDS,
     Settings,
     create_extractor,
     load_settings,
@@ -198,10 +201,11 @@ def check_settings(reporter: Reporter) -> Settings | None:
     except ValueError as error:
         details = error.errors() if hasattr(error, "errors") else []
         location = details[0].get("loc", ()) if details else ()
-        field = ".".join(str(part) for part in location) or "configuration"
+        field = str(location[0]) if location else "configuration"
+        variable = ENVIRONMENT_FIELDS.get(field, field)
         reporter.result(
             "❌",
-            f"Environment: invalid setting {field}",
+            f"Environment: invalid setting {variable}",
             "Correct the named .env variable.",
         )
         return None
@@ -244,7 +248,7 @@ def check_oci_authentication(settings: Settings, reporter: Reporter) -> None:
         reporter.result(
             "❌",
             "OCI credentials: private key file is not readable",
-            "Mount or configure the OCI key file for this environment.",
+            "Check key_file in the selected OCI config profile.",
         )
         return
     reporter.result(
@@ -269,6 +273,17 @@ def check_model(settings: Settings, reporter: Reporter, skip: bool) -> None:
         result = create_extractor(settings).invoke(
             [HumanMessage("I would like 1 keyboard")]
         )
+        parsed = result.get("parsed") if isinstance(result, dict) else None
+        parsing_error = (
+            result.get("parsing_error") if isinstance(result, dict) else True
+        )
+        if parsing_error is not None or not getattr(parsed, "items", None):
+            reporter.result(
+                "❌",
+                "OCI model call: model responded but structured output could not be parsed",
+                "Check OCI_STRUCTURED_OUTPUT_METHOD and the selected model.",
+            )
+            return
         raw = result.get("raw") if isinstance(result, dict) else None
         usage = getattr(raw, "usage_metadata", None)
         detail = ""
@@ -289,11 +304,17 @@ def check_model(settings: Settings, reporter: Reporter, skip: bool) -> None:
             f"OCI model call: service error {error.status} ({error.code})",
             actions.get(error.status, "Review OCI configuration."),
         )
-    except (RequestException, TimeoutError, OSError):
+    except (*OCI_TRANSPORT_EXCEPTIONS, OSError):
         reporter.result(
             "❌",
             "OCI model call: network or timeout failure",
             "Check region and network connectivity.",
+        )
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        reporter.result(
+            "❌",
+            f"OCI model call: unexpected {type(error).__name__}",
+            "Check OCI model and structured-output configuration.",
         )
 
 
@@ -343,7 +364,7 @@ def check_langfuse(settings: Settings, reporter: Reporter, offline: bool) -> Non
             headers={"Authorization": f"Basic {authorization}"},
             timeout=5,
         )
-    except RequestException:
+    except requests.exceptions.RequestException:
         reporter.result(
             "❌",
             "Langfuse: network request failed",
@@ -351,11 +372,7 @@ def check_langfuse(settings: Settings, reporter: Reporter, offline: bool) -> Non
         )
         return
     if response.status_code == 200:
-        data = response.json().get("data", [])
-        name = (
-            data[0].get("name", "configured project") if data else "configured project"
-        )
-        reporter.result("✅", f"Langfuse: connected to {name}")
+        report_langfuse_project(response, reporter)
     elif response.status_code in {401, 403}:
         reporter.result(
             "❌",
@@ -368,6 +385,30 @@ def check_langfuse(settings: Settings, reporter: Reporter, offline: bool) -> Non
             f"Langfuse: unexpected status {response.status_code}",
             "Check the URL and region.",
         )
+
+
+def report_langfuse_project(response: requests.Response, reporter: Reporter) -> None:
+    """Report a safe project-validation result for a successful Langfuse call.
+
+    Args:
+        response: Successful Langfuse HTTP response.
+        reporter: Result collector.
+    """
+    try:
+        payload = response.json()
+    except ValueError:
+        reporter.result("✅", "Langfuse: connected to configured project")
+        return
+    data = payload.get("data", []) if isinstance(payload, dict) else []
+    if not data:
+        reporter.result(
+            "❌",
+            "Langfuse: no project is associated with the configured keys",
+            "Check the project keys and region.",
+        )
+        return
+    name = data[0].get("name", "configured project")
+    reporter.result("✅", f"Langfuse: connected to {name}")
 
 
 def check_pricing(settings: Settings, reporter: Reporter) -> None:

@@ -6,11 +6,17 @@ Package the order-fulfillment FastAPI agent as a `linux/amd64` container and
 provide a versioned `agent.yaml` compatible with the manifest schema used by
 the parallel `codex-4-oci-enterprise-ai-deployment` repository.
 
+The Dockerfile and `agent.yaml` serve OCI Enterprise AI deployment only, using
+`RESOURCE_PRINCIPAL`. They are not local-container development artifacts and
+must not be changed to support local execution.
+
 ## Requirements
 
 - Add `demos/order_fulfillment/Dockerfile`, built from the repository root.
 - Use `python:3.11-slim`, install only root runtime dependencies with binary
   wheels, copy the `demos` package, and run as a non-root user.
+- Copy both `requirements.txt` and `constraints.txt` before installation because
+  the runtime requirements file references the constraints file.
 - Start Uvicorn on `0.0.0.0:8080` with the existing application factory.
 - Add `GET /ready`, returning `200 {"status": "ready"}` after the graph is
   initialized and `503` before initialization is complete.
@@ -29,6 +35,8 @@ the parallel `codex-4-oci-enterprise-ai-deployment` repository.
 
 - This change provides container and manifest artifacts only. It does not
   build, push, deploy, or provision OCI resources.
+- Local Docker execution, including API-key authentication and host OCI-file
+  mounting, is outside this contract.
 - It does not add deployment scripts to this repository. The manifest format
   is compatible with the external deployment repository's tooling.
 - The functional `/orders` check is excluded from the manifest because it
@@ -42,6 +50,10 @@ runtime dependencies live in `requirements.txt` and imports begin with the
 `demos` package. `CMD` invokes `demos.order_fulfillment.api:create_app` in
 factory mode. The application initializes its graph during FastAPI lifespan;
 the readiness endpoint reads that initialized graph state.
+
+The Dockerfile copies `constraints.txt` with `requirements.txt` so the runtime
+`pip install` can resolve the `-c constraints.txt` directive. This is a deploy
+build correction, not local-container support.
 
 At deployment, OCI supplies the resource principal. The deployment operator
 supplies non-secret deployment-specific values through `OCI_REGION`,

@@ -18,6 +18,24 @@ from pydantic import BaseModel, Field, SecretStr
 from demos.order_fulfillment.models import ExtractedOrder, Name
 
 AGENT_DIR = Path(__file__).resolve().parent
+ENVIRONMENT_FIELDS = {
+    "region": "OCI_REGION",
+    "model_id": "MODEL_ID",
+    "compartment_id": "OCI_COMPARTMENT_ID",
+    "auth_type": "OCI_AUTH_TYPE",
+    "config_file": "OCI_CONFIG_FILE",
+    "config_profile": "OCI_CONFIG_PROFILE",
+    "output_method": "OCI_STRUCTURED_OUTPUT_METHOD",
+    "reasoning_effort": "OCI_REASONING_EFFORT",
+    "traces_endpoint": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+    "service_name": "OTEL_SERVICE_NAME",
+    "model_pricing_file": "MODEL_PRICING_FILE",
+    "pii_redaction": "PII_REDACTION",
+    "langfuse_base_url": "LANGFUSE_BASE_URL",
+    "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
+    "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
+    "langfuse_ingestion_version": "LANGFUSE_INGESTION_VERSION",
+}
 
 
 class Settings(BaseModel):
@@ -61,25 +79,9 @@ def load_settings(env_file: Path = AGENT_DIR / ".env") -> Settings:
         ValueError: Required configuration is missing or invalid.
     """
     values = {**dotenv_values(env_file), **os.environ}
-    fields = {
-        "region": "OCI_REGION",
-        "model_id": "MODEL_ID",
-        "compartment_id": "OCI_COMPARTMENT_ID",
-        "auth_type": "OCI_AUTH_TYPE",
-        "config_file": "OCI_CONFIG_FILE",
-        "config_profile": "OCI_CONFIG_PROFILE",
-        "output_method": "OCI_STRUCTURED_OUTPUT_METHOD",
-        "reasoning_effort": "OCI_REASONING_EFFORT",
-        "traces_endpoint": "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
-        "service_name": "OTEL_SERVICE_NAME",
-        "model_pricing_file": "MODEL_PRICING_FILE",
-        "pii_redaction": "PII_REDACTION",
-        "langfuse_base_url": "LANGFUSE_BASE_URL",
-        "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
-        "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
-        "langfuse_ingestion_version": "LANGFUSE_INGESTION_VERSION",
+    selected = {
+        name: values[key] for name, key in ENVIRONMENT_FIELDS.items() if key in values
     }
-    selected = {name: values[key] for name, key in fields.items() if key in values}
     if isinstance(selected.get("reasoning_effort"), str):
         selected["reasoning_effort"] = selected["reasoning_effort"].strip().upper()
     return Settings.model_validate(selected)

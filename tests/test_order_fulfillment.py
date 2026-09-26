@@ -19,7 +19,7 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.output_parsers import PydanticOutputParser
-from oci.exceptions import ServiceError
+from oci.exceptions import ConnectTimeout, ServiceError
 
 from demos.order_fulfillment.api import create_app
 from demos.order_fulfillment.config import AGENT_DIR, Settings
@@ -256,6 +256,19 @@ def test_api_model_failure(caplog):
         assert "TimeoutError" in caplog.text
         assert "secret" not in caplog.text
     assert not inventory.orders
+
+
+def test_api_oci_connection_timeout_returns_502():
+    """Treat OCI SDK vendored network failures as transport errors."""
+    app = create_app(
+        sample_settings(),
+        RunnableLambda(Mock(side_effect=ConnectTimeout("private"))),
+        Inventory.load(AGENT_DIR / "catalog.json"),
+    )
+    with TestClient(app) as client:
+        response = client.post("/orders", json={"request": "2 keyboards"})
+    assert response.status_code == 502
+    assert "private" not in response.text
 
 
 def test_api_oci_rejection(caplog):

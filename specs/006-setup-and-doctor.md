@@ -8,8 +8,7 @@ maintainer's selected OCI defaults.
 Make `demos/order_fulfillment` straightforward to install and diagnose for
 non-developer EMEA Cloud Engineer Account colleagues on macOS Apple Silicon.
 The deliverables are an idempotent setup script, a `doctor` diagnostic command,
-documented local Docker execution using `API_KEY` authentication, and a root
-`TODO.md` for deferred work.
+and a root `TODO.md` for deferred work.
 
 ## Supported platform and exclusions
 
@@ -23,13 +22,18 @@ Rust source build. macOS Intel is therefore unsupported until Relay publishes a
 macOS x86_64 wheel.
 
 This change must not alter demo behavior. In particular, do not change
-`nodes.py`, `graph.py`, `api.py`, or `telemetry.py`; do not update dependencies;
+`nodes.py`, `graph.py`, or `telemetry.py`; do not update dependencies;
 and do not change graph flow, tracing, PII redaction, or pricing. `doctor` must
 reuse `load_settings`, `create_extractor`, `trace_endpoints`,
 `pricing_component`, and `pii_component` rather than duplicating their logic.
 It must not validate repository-owned artifacts such as documentation, example
 files, the default pricing catalog, or the deployment manifest: automated tests
 own their validation.
+
+The OCI Enterprise AI `Dockerfile` and `agent.yaml` are deployment-only
+artifacts that use `RESOURCE_PRINCIPAL`. Local container execution is outside
+this specification, and doctor is a local tool with no container-specific
+logic.
 
 ## Architecture and deliverables
 
@@ -111,7 +115,8 @@ Run checks in this order:
    `trace_endpoints()`. A base URL containing `/api/public` is an error saying
    `use only the base URL`. Unless offline, issue a short-timeout authenticated
    GET to `{LANGFUSE_BASE_URL}/api/public/projects`: 200 is success and prints
-   the returned project name; 401/403 indicates invalid keys, project, or
+   the returned project name. A JSON response with no associated project is an
+   error indicating invalid keys, project, or region; 401/403 indicates invalid keys, project, or
    region; another status or a network error identifies the URL/region and
    gives the EU (`https://cloud.langfuse.com`) and US
    (`https://us.cloud.langfuse.com`) URLs.
@@ -136,22 +141,6 @@ The verified template uses `eu-frankfurt-1`, `openai.gpt-5.6-sol`, and `NONE`.
 These values came from the maintainer's local verified configuration; future
 models must not be added without equivalent verification.
 
-### Local Docker execution with API keys
-
-Document and, if necessary, enable local execution of the existing image using
-`--env-file demos/order_fulfillment/.env`, `OCI_AUTH_TYPE=API_KEY`, a read-only
-mount of the host OCI configuration directory, and port 8080. Secrets and the
-local `.env` must remain outside the image through `.dockerignore`. Keep
-`agent.yaml` unchanged because Enterprise AI deployment remains
-`RESOURCE_PRINCIPAL`-based.
-
-The image uses `HOME=/tmp` and UID 10001. Host OCI `key_file` values often use
-absolute `/Users/...` paths that do not exist in the container. Choose and
-document a simple, verifiable solution that needs no edits to user files—for
-example, mount `~/.oci` read-only at `/tmp/.oci` and require a `~/.oci/...`
-key-file reference. When doctor runs inside the container, it must recognize a
-missing absolute key-file target and explain this specific problem clearly.
-
 ### Documentation and TODO
 
 Rewrite `Quickstart.md` as this linear journey:
@@ -163,8 +152,8 @@ Rewrite `Quickstart.md` as this linear journey:
 5. Run `./demos/order_fulfillment/start.sh`.
 6. Submit the normal-order and phone-number `curl` examples.
 
-Include **Run with Docker**, **Troubleshooting** (pointing to doctor), and
-**Supported platforms** sections. State that macOS Apple Silicon is tested,
+Include **Troubleshooting** (pointing to doctor) and **Supported platforms**
+sections. State that macOS Apple Silicon is tested,
 other platforms are untested and deferred to `TODO.md`, and macOS Intel is
 unsupported because no NeMo Relay wheel exists. Keep development-dependency
 installation in the contributor section of the root README rather than the
@@ -173,7 +162,9 @@ demo-run path.
 Add English root `TODO.md`, linked from the root README, containing:
 
 - **Platform support:** planned Windows setup equivalent, non-`start.sh`
-  startup, PowerShell curl, `cp -n`, Docker and doctor tests; planned Linux
+  startup, PowerShell curl, `cp -n`, and doctor tests; evaluate a separate
+  local container option that must not modify the Enterprise AI Dockerfile;
+  planned Linux
   setup and doctor tests; and the macOS Intel wheel limitation.
 - **Planned demo improvements:** Relay prompt-injection guardrail;
   documentation restructuring with Langfuse screenshots and an ACE
@@ -207,7 +198,6 @@ and Langfuse requests. Cover every doctor check and outcome, including:
   OCIDs, or private-key paths;
 - skipping `pricing_component()` for the default catalog; invalid custom
   catalog; matching pricing by model ID and alias; and missing pricing entry;
-- container detection of a nonexistent absolute `key_file` path;
 - `sh -n scripts/setup.sh` as an automated setup-script syntax check.
 
 All existing tests, Black, Pylint, pytest-cov at 80% or higher, README updates,
@@ -221,7 +211,6 @@ The maintainer performs the following on macOS Apple Silicon:
    successes, start the demo, and inspect the Langfuse trace.
 2. Intentionally use invalid Langfuse credentials and an unavailable model ID;
    verify doctor reports the prescribed corrective actions.
-3. Run doctor and `/orders` inside Docker with `API_KEY` authentication.
 
 Expected mocked doctor output is structurally similar to:
 

@@ -15,6 +15,7 @@ import warnings
 from fastapi import FastAPI, HTTPException
 from langchain_core.runnables import Runnable
 import nemo_relay
+from oci.exceptions import ConnectTimeout, RequestException as OCIRequestException
 from oci.exceptions import ServiceError
 from requests.exceptions import RequestException
 
@@ -30,6 +31,12 @@ from demos.order_fulfillment.models import OrderRequest, OrderResponse
 from demos.order_fulfillment.telemetry import relay_lifespan, trace_scope
 
 LOGGER = logging.getLogger(__name__)
+OCI_TRANSPORT_EXCEPTIONS = (
+    RequestException,
+    OCIRequestException,
+    ConnectTimeout,
+    TimeoutError,
+)
 
 
 def configure_warning_filters() -> None:
@@ -144,7 +151,7 @@ def create_app(
                     f"OCI rejected the model request (upstream status {error.status}). "
                     "Check model settings, structured output, reasoning effort, and OCI access.",
                 ) from error
-            except (RequestException, TimeoutError) as error:
+            except OCI_TRANSPORT_EXCEPTIONS as error:
                 LOGGER.error("Model transport failed: type=%s", type(error).__name__)
                 raise HTTPException(
                     502, "The model service is unavailable. Please retry later."

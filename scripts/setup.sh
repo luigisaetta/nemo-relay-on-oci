@@ -2,6 +2,8 @@
 # Set up the supported runtime environment without changing the caller's shell.
 set -eu
 
+cd "$(dirname "$0")/.."
+
 if ! command -v conda >/dev/null 2>&1; then
     echo "Conda is required. Install it from https://docs.conda.io/projects/conda/en/latest/user-guide/install/"
     exit 1

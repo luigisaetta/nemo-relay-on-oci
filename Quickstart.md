@@ -178,26 +178,6 @@ usage, and estimated invocation cost. When enabled, phone-number redaction is
 applied before export. Trace export is batched, so it may take a short time to
 appear.
 
-## Run with Docker
-
-Build the existing image from the repository root. For local API-key use, mount
-the OCI directory read-only at the same absolute host path so an absolute
-`key_file` in the OCI config remains valid inside the container:
-
-```bash
-docker build -f demos/order_fulfillment/Dockerfile -t order-fulfillment:local .
-docker run --rm -p 8080:8080 \
-  --env-file demos/order_fulfillment/.env \
-  -e OCI_AUTH_TYPE=API_KEY \
-  --mount type=bind,src="$HOME/.oci",dst="$HOME/.oci",readonly \
-  order-fulfillment:local
-```
-
-Run doctor in the image with the same `--env-file` and mount before invoking
-`/orders`. If doctor reports that the private key is unreadable, the container
-cannot see the path named by `key_file`; use the same-path mount above. Neither
-the OCI files nor `.env` are copied into the image.
-
 ## Troubleshooting
 
 Run `python -m demos.order_fulfillment.doctor` first. It identifies invalid

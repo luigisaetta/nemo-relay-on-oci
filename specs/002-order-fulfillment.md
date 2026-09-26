@@ -269,6 +269,9 @@ in [specification 004](004-order-fulfillment-container.md).
 - Upstream failures remain HTTP 502, but OCI service rejections report the
   upstream status and a configuration hint. Server logs record exception type
   or OCI status/code without raw exception text, prompts, or credentials.
+- OCI SDK vendored transport exceptions, including `ConnectTimeout`, are also
+  treated as HTTP 502 model-service failures rather than unexpected HTTP 500
+  responses.
   Regression tests must verify parameter forwarding and sanitized failures.
 - Match normalized product names and explicit aliases, ignoring case and repeated
   whitespace. Reject unknown or ambiguous matches without fuzzy guessing.

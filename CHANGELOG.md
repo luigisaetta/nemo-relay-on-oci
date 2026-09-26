@@ -7,6 +7,10 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Made doctor reject successful Langfuse responses that do not
+  identify a project associated with the configured API keys.
+- 2026-09-26: Restored the OCI Enterprise AI-only Dockerfile scope and improved
+  doctor structured-output, validation, and Langfuse diagnostics.
 - 2026-09-26: Applied the existing exact OCI empty-text warning filter to the
   doctor model diagnostic in function-calling mode.
 - 2026-09-26: Added macOS Apple Silicon setup, setup diagnostics, and local
