@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Added the design specification for the independent
+  order-fulfillment OCI Responses API demo.
 - 2026-09-26: Fixed prompt-guard fail-open telemetry to use Relay's
   `LogSeverity.Warn`, preventing an OCI guard failure from becoming an HTTP 500.
 - 2026-09-26: Corrected prompt-guardrail examples to distinguish the local
