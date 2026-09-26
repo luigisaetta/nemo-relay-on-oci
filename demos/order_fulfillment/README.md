@@ -92,6 +92,7 @@ Open [API documentation](http://127.0.0.1:8000/docs) or send:
 
 ```bash
 curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/ready
 curl -X POST http://127.0.0.1:8000/orders \
   -H 'Content-Type: application/json' \
   -d '{"request":"I would like 2 keyboards"}'
@@ -115,8 +116,38 @@ HTTP 200 includes business outcomes `confirmed`, `invalid_request`, `no_match`,
 `out_of_stock`, and `insufficient_stock`. Invalid HTTP input returns 422.
 OCI service/network failures return 502 without provider details; unexpected
 internal failures return 500. `/health` checks local readiness, not inference.
+`/ready` returns `{"status":"ready"}` once application startup has initialized
+the graph.
 Model extraction quality and structured-output support depend on the selected
 OCI model; offline tests cannot verify those capabilities.
+
+## OCI Enterprise AI container
+
+[`Dockerfile`](Dockerfile) and [`agent.yaml`](agent.yaml) follow the
+`linux/amd64` OCI Enterprise AI container and schema-v1 manifest conventions
+used by the parallel `codex-4-oci-enterprise-ai-deployment` repository. The
+root repository is the Docker build context so the image can install the pinned
+runtime dependencies and import the full `demos` package. `.env` files are
+excluded from the context and are never copied into the image.
+
+Build from the repository root with Docker buildx:
+
+```bash
+docker buildx build --platform linux/amd64 --load --provenance=false --sbom=false \
+  -f demos/order_fulfillment/Dockerfile -t order-fulfillment:0.1.0 .
+```
+
+The image listens on `0.0.0.0:8080`, runs as a non-root user, and supports a
+read-only root filesystem with writable `/tmp`. It requires OCI resource
+principal support plus `OCI_REGION`, `MODEL_ID`, and `OCI_COMPARTMENT_ID` at
+runtime. The manifest resolves those non-secret values from the deployment
+operator environment and fixes `OCI_AUTH_TYPE=RESOURCE_PRINCIPAL`; it contains
+no credentials, OCIDs, or Langfuse keys.
+
+The manifest declares no `/orders` functional verification because that call
+requires live OCI inference. OCI platforms can use the mandatory `GET /health`
+and `GET /ready` probes. Building, pushing to OCIR, and creating a hosted
+application or deployment are intentionally outside this demo change.
 
 ### Troubleshooting a 502 response
 

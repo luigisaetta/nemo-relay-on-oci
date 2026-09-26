@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import nemo_relay
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
@@ -206,6 +207,7 @@ def test_api_success_and_validation():
     app = create_app(sample_settings(), RunnableLambda(lambda _: extracted()))
     with TestClient(app) as client:
         assert client.get("/health").json() == {"status": "ok"}
+        assert client.get("/ready").json() == {"status": "ready"}
         for body in [{}, {"request": " "}, {"request": "x" * 2001}, {"request": 5}]:
             assert client.post("/orders", json=body).status_code == 422
         response = client.post("/orders", json={"request": "2 keyboards"})
@@ -213,6 +215,19 @@ def test_api_success_and_validation():
         assert response.json()["status"] == "confirmed"
         assert response.json()["request"] == "2 keyboards"
         assert response.json()["order_id"]
+
+
+def test_readiness_before_startup():
+    """Return a retryable readiness failure before the graph is initialized."""
+    app = create_app(sample_settings(), RunnableLambda(lambda _: extracted()))
+    ready_endpoint = next(
+        route.endpoint
+        for route in app.routes
+        if getattr(route, "path", None) == "/ready"
+    )
+    with pytest.raises(HTTPException) as failure:
+        ready_endpoint()
+    assert failure.value.status_code == 503
 
 
 def test_api_model_failure(caplog):

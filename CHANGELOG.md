@@ -5,6 +5,13 @@ when released.
 
 ## Unreleased
 
+### Changed
+
+- Clarified the repository objective as developing and deploying robust,
+  secure, controllable, observable agents with NeMo Relay and OCI Enterprise
+  AI. Added a concise root quick start and a detailed `Quickstart.md` for
+  local setup and execution of the first demo.
+
 ### Fixed
 
 - Replace automatic LangGraph callback spans with explicit, domain-named Relay
@@ -39,6 +46,10 @@ when released.
   and regression tests for parameter forwarding and error handling.
 
 ### Added
+
+- OCI Enterprise AI container artifacts for order fulfillment: a non-root
+  `linux/amd64` Dockerfile, a schema-v1 deployment manifest, build-context
+  secret exclusions, and a readiness endpoint.
 
 - Direct remote Langfuse export through NeMo Relay's built-in HTTP/protobuf
   exporter, with automatic trace URL and endpoint-local Basic authentication.

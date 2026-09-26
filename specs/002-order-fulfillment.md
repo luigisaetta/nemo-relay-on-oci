@@ -239,6 +239,8 @@ Trace configuration will follow the pinned Relay version described in
 follow the first implementation decisions below. Credentials must not be stored in the repository.
 LLM token usage and optional Relay-estimated pricing are specified separately in
 [specification 003](003-llm-token-usage-and-cost.md).
+OCI Enterprise AI container packaging and its manifest contract are specified
+in [specification 004](004-order-fulfillment-container.md).
 
 ## First implementation decisions
 

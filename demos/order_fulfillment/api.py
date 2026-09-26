@@ -94,6 +94,20 @@ def create_app(
         """
         return {"status": "ok"}
 
+    @app.get("/ready")
+    def ready() -> dict:
+        """Report whether startup initialized the order workflow.
+
+        Returns:
+            Readiness status after the graph is available.
+
+        Raises:
+            HTTPException: The graph has not completed initialization.
+        """
+        if not hasattr(app.state, "graph"):
+            raise HTTPException(503, "Order workflow is not ready")
+        return {"status": "ready"}
+
     @app.post("/orders", response_model=OrderResponse)
     def place_order(body: OrderRequest) -> OrderResponse:
         """Run the graph for one natural-language order attempt.

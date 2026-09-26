@@ -5,11 +5,36 @@
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-blue.svg)](https://docs.pytest.org/)
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 
-A collection of AI agent demos built with **NVIDIA NeMo Relay**,
-**OCI Generative AI**, **`langchain_oci`**, and **LangGraph**.
+A practical reference for using **NVIDIA NeMo Relay** with **OCI Enterprise AI**
+and OCI Generative AI to develop and deploy robust, secure, controllable AI
+agents with end-to-end observability. The demos combine NeMo Relay,
+**`langchain_oci`**, and **LangGraph**.
 
-The repository contains a runnable order fulfillment demo, specifications,
-pinned dependencies, and offline acceptance tests.
+This repository will grow as a series of demos that progressively cover the
+capabilities available through the OCI and NeMo Relay integration. Each demo
+documents its purpose, configuration, integrations, and root-level execution
+command. The current first demo is runnable; later capabilities are added only
+when implemented and verified.
+
+The repository also includes specifications, pinned dependencies, and offline
+acceptance tests.
+
+## Quick start
+
+To run the first demo, create or activate the required Conda environment,
+install the development dependencies, configure OCI credentials and model
+settings in the demo `.env`, then start the service from the repository root:
+
+```bash
+conda activate nemo-relay-on-oci
+python -m pip install -r requirements-dev.txt
+cp -n demos/order_fulfillment/.env.example demos/order_fulfillment/.env
+./demos/order_fulfillment/start.sh
+```
+
+Edit the copied `.env` before starting the service. The complete environment
+setup, OCI prerequisites, configuration reference, launch, and verification
+steps are in [Quickstart.md](Quickstart.md).
 
 ## Demos
 
@@ -18,7 +43,7 @@ capabilities demonstrated by each demo.
 
 | Demo | Functionality |
 | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay emits one nested trace per order, including graph callbacks, LLM prompts and outputs, and tool inputs and results, exported directly to Langfuse through OTLP. |
+| [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay emits one nested trace per order, including named domain spans, LLM prompts and outputs, and tool inputs and results, exported directly to Langfuse through OTLP. The demo includes a `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest. |
 
 ## Development environment
 

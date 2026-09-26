@@ -1,0 +1,40 @@
+version = 1
+
+[[components]]
+kind = "observability"
+enabled = true
+
+[components.config]
+version = 4
+enable_full_payloads = true
+
+# Stream grezzo degli eventi (utile per il debug locale)
+[components.config.atof]
+enabled = true
+
+[[components.config.atof.sinks]]
+type = "file"
+output_directory = "./observability"
+filename = "events.jsonl"
+mode = "append"
+
+# Traiettoria completa del run (audit / valutazione offline)
+[components.config.atif]
+enabled = true
+agent_name = "oci-ops-graph"
+output_directory = "./observability"
+filename_template = "trajectory-{session_id}.json"
+
+# --- Export verso Langfuse via OTLP (decommenta per usarlo) ---------------
+# LANGFUSE_OTEL_AUTH deve contenere: "Basic <base64(public_key:secret_key)>"
+#
+# [components.config.opentelemetry]
+# enabled = true
+#
+# [[components.config.opentelemetry.endpoints]]
+# type = "gen_ai"
+# endpoint = "https://cloud.langfuse.com/api/public/otel/v1/traces"
+# service_name = "oci-ops-graph"
+#
+# [components.config.opentelemetry.endpoints.header_env]
+# authorization = "LANGFUSE_OTEL_AUTH"

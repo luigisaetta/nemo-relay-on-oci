@@ -1,0 +1,27 @@
+schema_version: 1
+name: order-fulfillment
+
+runtime:
+  env:
+    - name: OCI_REGION
+      from_env: OCI_REGION
+    - name: MODEL_ID
+      from_env: MODEL_ID
+    - name: OCI_COMPARTMENT_ID
+      from_env: OCI_COMPARTMENT_ID
+    - name: OCI_AUTH_TYPE
+      value: RESOURCE_PRINCIPAL
+    - name: OCI_STRUCTURED_OUTPUT_METHOD
+      value: function_calling
+    - name: OTEL_SERVICE_NAME
+      value: order-fulfillment
+
+build:
+  context: .
+  dockerfile: demos/order_fulfillment/Dockerfile
+publish:
+  repository: agents/order-fulfillment
+deploy:
+  application_name: order-fulfillment
+  profile: public-noauth
+verify: []
