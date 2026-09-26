@@ -12,8 +12,10 @@
 
 ## Planned demo improvements
 
-- **Planned — Prompt-injection guardrail:** Add a NeMo Relay guardrail for
-  malicious instructions embedded in order text.
+- **Needs maintainer review — OCI guardrail version:** Re-evaluate the pinned
+  `OCI_GUARDRAIL_VERSION` against OCI service changes and known bypasses.
+- **Planned — Relay LLM error-status export:** Investigate why selected LLM
+  failures may not be exported with the expected error status.
 - **Planned — Demo material:** Restructure documentation with Langfuse
   screenshots and add an ACE-oriented `DEMO-SCRIPT.md`.
 - **Needs maintainer environment — OCI model comparison:** Compare models and

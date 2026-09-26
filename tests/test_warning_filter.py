@@ -54,6 +54,7 @@ def test_json_mode_keeps_empty_text_warning():
         model_id="test",
         compartment_id="test",
         output_method="json_mode",
+        prompt_guard="off",
     )
     app = create_app(settings, RunnableLambda(lambda _: {"items": []}))
     with warnings.catch_warnings(record=True) as captured:

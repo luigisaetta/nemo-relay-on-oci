@@ -26,7 +26,8 @@ from nemo_relay.observability import (
     OpenTelemetrySectionConfig,
 )
 
-from demos.order_fulfillment.config import Settings
+from demos.order_fulfillment.config import Settings, create_guardrails_client
+from demos.order_fulfillment.prompt_guard import build_prompt_guard
 
 
 def trace_endpoints(settings: Settings) -> list[OpenTelemetryEndpointConfig]:
@@ -175,7 +176,24 @@ async def relay_lifespan(settings: Settings):
         components.append(pii)
     configuration = plugin.PluginConfig(components=components)
     async with plugin.activate(configuration) as activation:
-        yield activation
+        guard_registered = False
+        if settings.prompt_guard != "off":
+            client = (
+                create_guardrails_client(settings)
+                if settings.prompt_guard in {"oci", "combined"}
+                else None
+            )
+            nemo_relay.guardrails.register_llm_conditional_execution(
+                "prompt_guard", 100, build_prompt_guard(settings, client)
+            )
+            guard_registered = True
+        try:
+            yield activation
+        finally:
+            if guard_registered:
+                nemo_relay.guardrails.deregister_llm_conditional_execution(
+                    "prompt_guard"
+                )
 
 
 @contextmanager

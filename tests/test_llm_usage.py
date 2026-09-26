@@ -151,7 +151,10 @@ def extract_end_event(settings: Settings, extractor: RunnableLambda):
 def test_llm_usage_without_pricing():
     """Export OCI tokens without estimated cost when no catalog is configured."""
     settings = Settings(
-        region="us-chicago-1", model_id="test-model", compartment_id="test"
+        region="us-chicago-1",
+        model_id="test-model",
+        compartment_id="test",
+        prompt_guard="off",
     )
     event = extract_end_event(
         settings,
@@ -175,6 +178,7 @@ def test_llm_usage_with_pricing(tmp_path):
         model_id="test-model",
         compartment_id="test",
         model_pricing_file=str(catalog_path),
+        prompt_guard="off",
     )
     event = extract_end_event(
         settings,
@@ -188,7 +192,10 @@ def test_llm_usage_with_pricing(tmp_path):
 def test_missing_usage_metadata_exports_no_tokens():
     """Allow OCI responses without token metadata."""
     settings = Settings(
-        region="us-chicago-1", model_id="test-model", compartment_id="test"
+        region="us-chicago-1",
+        model_id="test-model",
+        compartment_id="test",
+        prompt_guard="off",
     )
     event = extract_end_event(settings, RunnableLambda(lambda _: raw_extraction()))
     response = event.category_profile["annotated_response"]

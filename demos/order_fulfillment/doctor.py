@@ -34,8 +34,10 @@ from demos.order_fulfillment.config import (
     ENVIRONMENT_FIELDS,
     Settings,
     create_extractor,
+    create_guardrails_client,
     load_settings,
 )
+from demos.order_fulfillment.prompt_guard import oci_flagged
 from demos.order_fulfillment.telemetry import (
     pii_component,
     pricing_component,
@@ -477,6 +479,65 @@ def check_pii(settings: Settings, reporter: Reporter) -> None:
         )
 
 
+def check_prompt_guard(settings: Settings, reporter: Reporter, offline: bool) -> None:
+    """Report and, when applicable, exercise OCI prompt-injection detection.
+
+    Args:
+        settings: Validated demo settings.
+        reporter: Result collector.
+        offline: Whether OCI network checks must be skipped.
+    """
+    if settings.prompt_guard == "off":
+        reporter.result("ℹ️", "Prompt guard: off")
+        return
+    if not settings.oci_guardrail_version:
+        reporter.result(
+            "⚠️",
+            "Prompt guard: OCI guardrail version is not pinned",
+            "Set OCI_GUARDRAIL_VERSION to a tested version such as 1.1.3.",
+        )
+    if settings.prompt_guard == "pattern":
+        reporter.result("✅", "Prompt guard: pattern mode is configured")
+        return
+    if offline:
+        reporter.result("ℹ️", "Prompt guard: OCI check skipped by --offline")
+        return
+    try:
+        flagged = oci_flagged(
+            create_guardrails_client(settings), settings, "I would like 1 keyboard"
+        )
+    except ServiceError as error:
+        reporter.result(
+            "❌",
+            f"Prompt guard: OCI service error {error.status} ({error.code})",
+            "Check OCI Guardrails access and compartment permissions.",
+        )
+    except (*OCI_TRANSPORT_EXCEPTIONS, OSError):
+        reporter.result(
+            "❌",
+            "Prompt guard: OCI network or timeout failure",
+            "Check region and network connectivity.",
+        )
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        reporter.result(
+            "❌",
+            f"Prompt guard: unexpected {type(error).__name__}",
+            "Check OCI Guardrails configuration.",
+        )
+    else:
+        if flagged:
+            reporter.result(
+                "❌",
+                "Prompt guard: innocent diagnostic request was flagged",
+                "Check OCI_GUARDRAIL_VERSION and OCI Guardrails configuration.",
+            )
+        else:
+            reporter.result(
+                "✅",
+                "Prompt guard: OCI classifier accepted an innocent diagnostic request",
+            )
+
+
 def run_doctor(
     arguments: argparse.Namespace, write: Callable[[str], None] = print
 ) -> int:
@@ -500,6 +561,7 @@ def run_doctor(
         check_langfuse(settings, reporter, arguments.offline)
         check_pricing(settings, reporter)
         check_pii(settings, reporter)
+        check_prompt_guard(settings, reporter, arguments.offline)
     return reporter.summary()
 
 

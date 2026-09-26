@@ -1,6 +1,6 @@
 # Specification 007: Layered prompt-injection guardrail
 
-Status: Planned implementation.
+Status: Implemented on 2026-09-26.
 
 ## Objective
 

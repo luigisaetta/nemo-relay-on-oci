@@ -13,6 +13,7 @@ from typing import Literal
 
 from dotenv import dotenv_values
 from langchain_oci import ChatOCIGenAI
+import oci
 from pydantic import BaseModel, Field, SecretStr
 
 from demos.order_fulfillment.models import ExtractedOrder, Name
@@ -35,6 +36,9 @@ ENVIRONMENT_FIELDS = {
     "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
     "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
     "langfuse_ingestion_version": "LANGFUSE_INGESTION_VERSION",
+    "prompt_guard": "PROMPT_GUARD",
+    "oci_guardrail_version": "OCI_GUARDRAIL_VERSION",
+    "prompt_guard_on_error": "PROMPT_GUARD_ON_ERROR",
 }
 
 
@@ -55,6 +59,9 @@ class Settings(BaseModel):
     service_name: Name = "order-fulfillment"
     model_pricing_file: str = ""
     pii_redaction: Literal["mask", "redact", "off"] = "mask"
+    prompt_guard: Literal["combined", "oci", "pattern", "off"] = "combined"
+    oci_guardrail_version: str = "1.1.3"
+    prompt_guard_on_error: Literal["allow", "block"] = "allow"
     langfuse_base_url: str = ""
     langfuse_public_key: SecretStr = SecretStr("")
     langfuse_secret_key: SecretStr = SecretStr("")
@@ -113,4 +120,27 @@ def create_extractor(settings: Settings):
     model = ChatOCIGenAI(**options)
     return model.with_structured_output(
         ExtractedOrder, method=settings.output_method, include_raw=True
+    )
+
+
+def create_guardrails_client(settings: Settings):
+    """Build an OCI ApplyGuardrails client using the demo authentication mode.
+
+    Args:
+        settings: Validated OCI configuration.
+
+    Returns:
+        Configured OCI Generative AI Inference client.
+    """
+    options = {"service_endpoint": settings.endpoint, "timeout": (5, 10)}
+    if settings.auth_type == "API_KEY":
+        config = oci.config.from_file(
+            str(Path(settings.config_file).expanduser()), settings.config_profile
+        )
+        return oci.generative_ai_inference.GenerativeAiInferenceClient(
+            config, **options
+        )
+    signer = oci.auth.signers.get_resource_principals_signer()
+    return oci.generative_ai_inference.GenerativeAiInferenceClient(
+        {}, signer=signer, **options
     )

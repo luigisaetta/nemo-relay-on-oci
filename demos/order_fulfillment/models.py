@@ -14,7 +14,12 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Quantity = Annotated[int, Field(strict=True, gt=0)]
 Status = Literal[
-    "confirmed", "invalid_request", "no_match", "out_of_stock", "insufficient_stock"
+    "confirmed",
+    "invalid_request",
+    "no_match",
+    "out_of_stock",
+    "insufficient_stock",
+    "blocked",
 ]
 
 

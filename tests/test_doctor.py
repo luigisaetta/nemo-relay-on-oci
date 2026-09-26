@@ -337,6 +337,36 @@ def test_pii_and_run_doctor_exit_codes():
     assert calls
 
 
+def test_prompt_guard_diagnostics_cover_offline_success_and_errors():
+    """Report safe OCI guardrail outcomes and an unpinned-version warning."""
+    result, lines = reporter()
+    doctor.check_prompt_guard(settings(prompt_guard="off"), result, False)
+    assert lines == ["ℹ️ Prompt guard: off"]
+
+    result, lines = reporter()
+    doctor.check_prompt_guard(settings(oci_guardrail_version=""), result, True)
+    assert result.warnings == 1
+    assert "skipped by --offline" in lines[-1]
+
+    result, lines = reporter()
+    with (
+        patch.object(doctor, "create_guardrails_client", return_value=Mock()),
+        patch.object(doctor, "oci_flagged", return_value=False),
+    ):
+        doctor.check_prompt_guard(settings(), result, False)
+    assert "accepted an innocent" in lines[0]
+
+    result, lines = reporter()
+    with patch.object(
+        doctor,
+        "oci_flagged",
+        side_effect=ServiceError(403, "NotAuthorized", {}, "private details"),
+    ):
+        doctor.check_prompt_guard(settings(), result, False)
+    assert "private details" not in "\n".join(lines)
+    assert "service error 403" in lines[0]
+
+
 def test_setup_script_is_valid_posix_shell():
     """Keep the setup script parseable by POSIX sh."""
     script = Path("scripts/setup.sh")

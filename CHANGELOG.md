@@ -7,6 +7,9 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Added the layered prompt-injection guardrail to order fulfillment,
+  including local and OCI detection, doctor validation, safe blocked outcomes,
+  and documentation.
 - 2026-09-26: Added the layered prompt-injection guardrail design specification
   for the order-fulfillment demo.
 - 2026-09-26: Made doctor reject successful Langfuse responses that do not

@@ -7,6 +7,10 @@ Description:
     Implements the callable nodes used by the order-fulfillment graph.
 """
 
+import asyncio
+import contextvars
+import inspect
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import json
 
@@ -65,6 +69,51 @@ Examples of linguistic normalization, not a catalog of available products:
 
 Return JSON matching this schema: {ExtractedOrder.model_json_schema()}
 """
+
+
+async def run_conditional_execution(request: nemo_relay.LLMRequest) -> None:
+    """Run Relay conditional guardrails from the synchronous graph node.
+
+    Args:
+        request: Relay request that will be validated before an LLM call.
+
+    Returns:
+        None when all guardrails permit the request.
+
+    Raises:
+        RuntimeError: A registered guardrail rejects the request.
+    """
+    outcome = nemo_relay.llm.conditional_execution(request)
+    if inspect.isawaitable(outcome):
+        await outcome
+
+
+def execute_conditional_execution(request: nemo_relay.LLMRequest) -> None:
+    """Synchronously execute Relay guardrails with or without an active loop.
+
+    LangGraph calls this node synchronously. Relay exposes Python guardrails as
+    an awaitable when activation already owns an event loop, so that case uses
+    a context-preserving worker thread rather than nesting event loops.
+
+    Args:
+        request: Relay request that will be validated before an LLM call.
+
+    Returns:
+        None when all guardrails permit the request.
+
+    Raises:
+        RuntimeError: A registered guardrail rejects the request.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(run_conditional_execution(request))
+        return
+    context = contextvars.copy_context()
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(
+            context.run, asyncio.run, run_conditional_execution(request)
+        ).result()
 
 
 def usage_payload(raw_response: object) -> dict[str, int] | None:
@@ -151,6 +200,12 @@ class ExtractRequestNode:
                 "messages": convert_to_openai_messages(messages),
             },
         )
+        try:
+            execute_conditional_execution(relay_request)
+        except RuntimeError as error:
+            if str(error).startswith("guardrail rejected"):
+                return {"status": "blocked"}
+            raise
         handle = nemo_relay.llm.call(
             "extract_order", relay_request, model_name=self.model_id
         )
@@ -332,6 +387,9 @@ class BuildResponseNode:
             ),
             "confirmed": (
                 f"Order {state.get('order_id')} registered successfully in the simulated system."
+            ),
+            "blocked": (
+                "The request was blocked by a safety policy. Please submit a plain order request."
             ),
         }
         with trace_scope(

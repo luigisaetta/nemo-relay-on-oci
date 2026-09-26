@@ -63,7 +63,7 @@ capabilities demonstrated by each demo.
 
 | Demo | Functionality |
 | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** Demonstrates:<ul><li>OCI LLM extraction, JSON inventory, and simulated order registration in an explicit LangGraph workflow.</li><li>NeMo Relay tracing of named agent steps, prompts, responses, token usage, and estimated per-invocation cost.</li><li>Configurable phone-number PII redaction in exported Relay telemetry, without changing the OCI prompt or HTTP response.</li><li>Direct OpenTelemetry export of those traces to Langfuse.</li><li>A `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest.</li></ul> |
+| [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** Demonstrates:<ul><li>OCI LLM extraction, JSON inventory, and simulated order registration in an explicit LangGraph workflow.</li><li>NeMo Relay tracing of named agent steps, prompts, responses, token usage, and estimated per-invocation cost.</li><li>Configurable phone-number PII redaction in exported Relay telemetry, without changing the OCI prompt or HTTP response.</li><li>Layered local and OCI prompt-injection guardrails before model invocation.</li><li>Direct OpenTelemetry export of those traces to Langfuse.</li><li>A `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest.</li></ul> |
 
 ## Development environment
 
