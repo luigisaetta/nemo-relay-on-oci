@@ -178,9 +178,13 @@ def test_model_check_success_errors_and_skip():
     extractor.invoke.return_value = {
         "raw": SimpleNamespace(usage_metadata={"total_tokens": 7})
     }
-    with patch.object(doctor, "create_extractor", return_value=extractor):
+    with (
+        patch.object(doctor, "create_extractor", return_value=extractor),
+        patch.object(doctor, "configure_warning_filters") as warning_filter,
+    ):
         doctor.check_model(settings(), result, False)
     assert "7 total tokens" in lines[0]
+    warning_filter.assert_called_once()
 
     result, lines = reporter()
     error = ServiceError(400, "BadRequest", {}, "private provider text")

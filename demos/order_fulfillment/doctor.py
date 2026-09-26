@@ -26,6 +26,7 @@ from langchain_core.messages import HumanMessage
 import requests
 from requests.exceptions import RequestException
 
+from demos.order_fulfillment.api import configure_warning_filters
 from demos.order_fulfillment.config import (
     AGENT_DIR,
     Settings,
@@ -263,6 +264,8 @@ def check_model(settings: Settings, reporter: Reporter, skip: bool) -> None:
         reporter.result("ℹ️", "OCI model call: skipped")
         return
     try:
+        if settings.output_method == "function_calling":
+            configure_warning_filters()
         result = create_extractor(settings).invoke(
             [HumanMessage("I would like 1 keyboard")]
         )

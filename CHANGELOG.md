@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Applied the existing exact OCI empty-text warning filter to the
+  doctor model diagnostic in function-calling mode.
 - 2026-09-26: Added macOS Apple Silicon setup, setup diagnostics, and local
   Docker API-key instructions for the order-fulfillment demo.
 - 2026-09-26: Added the setup-and-doctor design specification for the
