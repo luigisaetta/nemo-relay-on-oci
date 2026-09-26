@@ -1,4 +1,11 @@
-"""Esegue il grafo con un modello finto (nessuna chiamata a OCI) e riassume gli eventi Relay."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Runs the operations graph with a fake model and summarizes Relay events.
+"""
 
 import asyncio
 import json

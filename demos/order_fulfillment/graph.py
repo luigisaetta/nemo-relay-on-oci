@@ -1,4 +1,11 @@
-"""Explicit LangGraph control flow for a single order request."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Builds the LangGraph workflow for processing a single order request.
+"""
 
 from langchain_core.runnables import Runnable
 from langgraph.graph import END, START, StateGraph

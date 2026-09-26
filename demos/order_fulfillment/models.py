@@ -1,4 +1,11 @@
-"""Validated inputs and shared state for the order workflow."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Defines validated inputs, outputs, and shared state for the order workflow.
+"""
 
 from typing import Annotated, Literal, TypedDict
 

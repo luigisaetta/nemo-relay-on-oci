@@ -1,4 +1,11 @@
-"""Verify prompt wiring without claiming to test live LLM reasoning."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Tests extraction-prompt wiring without depending on live LLM reasoning.
+"""
 
 from unittest.mock import Mock
 

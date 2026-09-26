@@ -1,4 +1,11 @@
-"""Direct Langfuse export configuration tests without remote connections."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Tests Langfuse export configuration without remote connections.
+"""
 
 from base64 import b64decode
 from unittest.mock import patch

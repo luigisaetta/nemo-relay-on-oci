@@ -1,4 +1,11 @@
-"""Regression checks for narrowly scoped OCI warning suppression."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Tests narrowly scoped suppression of a known OCI warning.
+"""
 
 import warnings
 

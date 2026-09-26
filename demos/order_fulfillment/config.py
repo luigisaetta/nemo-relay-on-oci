@@ -1,4 +1,11 @@
-"""Agent-local environment configuration and OCI model construction."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Loads and validates environment settings and constructs the OCI model.
+"""
 
 import os
 from pathlib import Path

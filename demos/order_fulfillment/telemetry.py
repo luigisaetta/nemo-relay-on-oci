@@ -1,4 +1,11 @@
-"""Native Relay tracing and exporter lifecycle for the demo process."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Configures NeMo Relay tracing, pricing, and exporter lifecycle management.
+"""
 
 from contextlib import asynccontextmanager, contextmanager
 from base64 import b64encode

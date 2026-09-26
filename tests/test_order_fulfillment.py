@@ -1,4 +1,11 @@
-"""Business-path and API acceptance tests for specification 002."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Tests order-fulfillment business paths and FastAPI endpoints.
+"""
 
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import Mock

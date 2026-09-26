@@ -1,4 +1,11 @@
-"""Single-purpose callable nodes for the fulfillment graph."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Implements the callable nodes used by the order-fulfillment graph.
+"""
 
 from dataclasses import dataclass
 import json

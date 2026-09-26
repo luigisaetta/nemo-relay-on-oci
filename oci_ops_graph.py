@@ -1,27 +1,12 @@
-r"""
-Grafo LangGraph su OCI Generative AI, osservato e governato da NVIDIA NeMo Relay.
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
 
-Flusso:
-    START -> router --(ops)------> ops_agent -> approval -> END
-                    \-(general)--> general_answer -------> END
-
-Cosa dimostra:
-  * NemoRelayCallbackHandler  -> scope per grafo/nodi + mark di interrupt/resume
-  * NemoRelayMiddleware       -> chiamate LLM e tool "managed" dentro create_agent
-  * relay_chat()              -> chiamata LLM in un nodo custom instradata a mano
-                                 nella pipeline Relay (il callback handler NON
-                                 registra le chiamate LLM fatte direttamente)
-  * checkpointer + interrupt  -> human-in-the-loop con ripresa via Command(resume=...)
-
-Requisiti:
-    pip install "nemo-relay[langgraph]>=0.9" langchain-oci
-
-Variabili d'ambiente (nessuna credenziale nel codice):
-    OCI_GENAI_MODEL_ID      es. meta.llama-3.3-70b-instruct
-    OCI_GENAI_ENDPOINT      es. https://inference.generativeai.eu-frankfurt-1.oci.oraclecloud.com
-    OCI_COMPARTMENT_ID      OCID del compartment
-    OCI_CONFIG_PROFILE      profilo di ~/.oci/config (default: DEFAULT)
-r"""
+Description:
+    Demonstrates an OCI Generative AI operations graph with NeMo Relay tracing
+    and human approval.
+"""
 
 from __future__ import annotations
 

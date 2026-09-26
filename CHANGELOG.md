@@ -7,6 +7,9 @@ when released.
 
 ### Changed
 
+- Added standard author, last-modified, license, and English description
+  headers to every Python source file. Documented the required header format
+  and date-maintenance rule for contributors.
 - Clarified the repository objective as developing and deploying robust,
   secure, controllable, observable agents with NeMo Relay and OCI Enterprise
   AI. Added a concise root quick start and a detailed `Quickstart.md` for

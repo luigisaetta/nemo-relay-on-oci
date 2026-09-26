@@ -32,6 +32,23 @@ Google-style docstrings, including Args, Returns, and Raises sections where
 applicable. Add comments where they clarify intent, non-obvious behavior,
 or important constraints; do not merely repeat the code.
 
+Every Python source file, including tests and package initializers, must begin
+with this English module header:
+
+```python
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: YYYY-MM-DD
+License: MIT
+
+Description:
+    Brief English description of the source file's purpose.
+"""
+```
+
+Set `Last modified` to the current date whenever the file is changed. Keep the
+description concise, accurate, and specific to that source file.
+
 ## Required Conda environment
 
 Use the Conda environment named `nemo-relay-on-oci` for all Python work,

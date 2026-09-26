@@ -1,4 +1,11 @@
-"""FastAPI application factory; start with Uvicorn from the repository root."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Creates the FastAPI application for the order-fulfillment workflow.
+"""
 
 from contextlib import asynccontextmanager
 import logging

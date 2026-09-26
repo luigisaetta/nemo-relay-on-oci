@@ -1,4 +1,11 @@
-"""Configuration, catalog validation, and Relay lifecycle acceptance tests."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Tests configuration loading, catalog validation, and Relay lifecycle behavior.
+"""
 
 import asyncio
 import json

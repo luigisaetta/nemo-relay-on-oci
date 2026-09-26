@@ -1,4 +1,11 @@
-"""Offline Relay token-usage and model-pricing acceptance tests."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Tests Relay token-usage and model-pricing behavior without OCI calls.
+"""
 
 import asyncio
 import json

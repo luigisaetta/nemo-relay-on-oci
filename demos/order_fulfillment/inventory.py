@@ -1,4 +1,11 @@
-"""JSON catalog loading and thread-safe simulated order registration."""
+"""
+Author: L. Saetta (Luigi Saetta)
+Last modified: 2026-09-26
+License: MIT
+
+Description:
+    Loads the product catalog and registers simulated orders safely in memory.
+"""
 
 import json
 from dataclasses import dataclass, field
