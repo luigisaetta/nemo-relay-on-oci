@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Added the setup-and-doctor design specification for the
+  order-fulfillment demo.
 - 2026-09-26: Added configurable phone-number PII redaction to order-fulfillment Relay
   telemetry. The OCI prompt and client-facing response remain unchanged.
 - 2026-09-26: Added the PII-redaction design specification for the order-fulfillment demo.
