@@ -11,6 +11,9 @@ when released.
   secure, controllable, observable agents with NeMo Relay and OCI Enterprise
   AI. Added a concise root quick start and a detailed `Quickstart.md` for
   local setup and execution of the first demo.
+- Made Langfuse Cloud project credentials a prerequisite for demonstrating the
+  first demo's OpenTelemetry export of agent steps, prompts, responses, token
+  usage, and estimated per-invocation cost.
 
 ### Fixed
 

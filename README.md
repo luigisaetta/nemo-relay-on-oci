@@ -21,9 +21,24 @@ acceptance tests.
 
 ## Quick start
 
-To run the first demo, create or activate the required Conda environment,
-install the development dependencies, configure OCI credentials and model
-settings in the demo `.env`, then start the service from the repository root:
+The first demo shows how NeMo Relay traces an agent workflow and exports its
+observability data to Langfuse through OpenTelemetry. It records:
+
+- LLM prompts and responses.
+- Agent and tool steps in a nested trace.
+- Input, output, and total token counts when OCI returns usage metadata.
+- An estimated cost for each LLM invocation when the local pricing catalog is
+  configured.
+
+Before running it:
+
+- Create a Langfuse Cloud account and project, then obtain its public and
+  secret API keys. A free Cloud plan is available.
+- Configure the Langfuse URL and both keys, together with OCI credentials and
+  model settings, in the demo `.env` file.
+- Create or activate the required Conda environment and install the development
+  dependencies.
+- Start the service from the repository root.
 
 ```bash
 conda activate nemo-relay-on-oci
@@ -32,9 +47,12 @@ cp -n demos/order_fulfillment/.env.example demos/order_fulfillment/.env
 ./demos/order_fulfillment/start.sh
 ```
 
-Edit the copied `.env` before starting the service. The complete environment
-setup, OCI prerequisites, configuration reference, launch, and verification
-steps are in [Quickstart.md](Quickstart.md).
+The `.env` must contain `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`, and
+`LANGFUSE_SECRET_KEY` to demonstrate the trace export. The service can start
+without them, but no observability data is sent and the demo's main outcome is
+missing. The complete environment setup, Langfuse and OCI prerequisites,
+configuration reference, launch, and verification steps are in
+[Quickstart.md](Quickstart.md).
 
 ## Demos
 
@@ -43,7 +61,7 @@ capabilities demonstrated by each demo.
 
 | Demo | Functionality |
 | --- | --- |
-| [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** OCI LLM extraction, JSON inventory, and simulated order registration through a tool in an explicit LangGraph workflow. NeMo Relay emits one nested trace per order, including named domain spans, LLM prompts and outputs, and tool inputs and results, exported directly to Langfuse through OTLP. The demo includes a `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest. |
+| [Order fulfillment](demos/order_fulfillment/README.md) | **Implemented.** Demonstrates:<ul><li>OCI LLM extraction, JSON inventory, and simulated order registration in an explicit LangGraph workflow.</li><li>NeMo Relay tracing of named agent steps, prompts, responses, token usage, and estimated per-invocation cost.</li><li>Direct OpenTelemetry export of those traces to Langfuse.</li><li>A `linux/amd64` Dockerfile and OCI Enterprise AI-compatible manifest.</li></ul> |
 
 ## Development environment
 
@@ -106,18 +124,20 @@ LangGraph + ChatOCIGenAI -> NeMo Relay native OTLP exporter -> remote Langfuse
 ```
 
 No separate collector process, Docker container, or Langfuse SDK is required.
-Set `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`, and `LANGFUSE_SECRET_KEY` in
-`demos/order_fulfillment/.env`. Leave them all empty to disable export. Set
-Set `LANGFUSE_INGESTION_VERSION=4` for Langfuse Cloud v4 real-time ingestion.
-Keep `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` empty
-when using Langfuse.
+To run the first demo as intended:
+
+- Create a Langfuse Cloud project and use its public and secret API keys.
+- Set `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`, and `LANGFUSE_SECRET_KEY` in
+  `demos/order_fulfillment/.env`.
+- Set `LANGFUSE_INGESTION_VERSION=4` for Langfuse Cloud v4 real-time ingestion.
+- Keep `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` empty when using Langfuse.
 
 The agent builds the OTLP trace URL and endpoint-specific Basic authentication
 header automatically. Each order is exported as a single hierarchy with its
 request/response, complete LLM prompt/message history, and tool input/output.
-The extraction generation exports OCI token usage and can use an optional
-Relay pricing catalog for estimated cost; see the demo README for catalog and
-manual-verification instructions.
+The extraction generation exports OCI token usage and uses the configured Relay
+pricing catalog to calculate an estimated cost per invocation; see the demo
+README for catalog and manual-verification instructions.
 See the [demo setup](demos/order_fulfillment/README.md) for data-handling
 considerations. Native exporter configuration and remote Langfuse delivery have
 been exercised with configured project credentials.
@@ -188,9 +208,13 @@ its [README](demos/order_fulfillment/README.md) explains configuration setup.
 Real `.env` files must remain untracked; private keys stay in the local OCI
 configuration or credentials are supplied by the OCI resource principal runtime.
 
-Each demo will include a link to its specification, prerequisites, dependency
-versions, required OCI configuration, and execution commands. Regular tests
-will mock external services and will not require credentials or paid API
-calls; any integration tests will have separate instructions.
+Each demo will include:
+
+- A link to its specification.
+- Prerequisites, dependency versions, required OCI configuration, and execution
+  commands.
+- Regular tests that mock external services and require neither credentials nor
+  paid API calls.
+- Separate instructions for integration tests.
 
 Do not store credentials or secrets in the repository.

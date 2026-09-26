@@ -2,9 +2,18 @@
 
 This guide sets up the local environment and runs the first repository demo:
 the order fulfillment agent. It uses OCI Generative AI for structured order
-extraction, LangGraph for its workflow, and NeMo Relay for trace generation.
-OCI Enterprise AI deployment artifacts are included in the demo, but this
+extraction, LangGraph for its workflow, and NeMo Relay to trace every agent
+step and export observability data to Langfuse through OpenTelemetry. OCI
+Enterprise AI deployment artifacts are included in the demo, but this
 quickstart runs the service locally.
+
+The demo exports:
+
+- Agent and tool steps as one nested trace per order.
+- LLM prompts and responses.
+- Input, output, and total token counts when OCI supplies usage metadata.
+- An estimated cost for each LLM invocation, calculated from the local Relay
+  pricing catalog.
 
 ## Prerequisites
 
@@ -16,9 +25,14 @@ Before continuing, ensure that you have:
 - Permission to invoke that model in the selected compartment.
 - Either an OCI API signing-key profile on your machine or a supported OCI
   resource-principal runtime.
+- A Langfuse Cloud account, a project, and that project's public and secret API
+  keys. Langfuse Cloud offers a free plan. Create the project and keys as
+  described in the [Langfuse tracing quickstart](https://langfuse.com/docs/observability/get-started).
 - Git and a shell capable of running the commands below.
 
-Langfuse is optional. Configure it only if you want remote trace export.
+Langfuse configuration is required to observe the outcome that this demo is
+designed to show. Without it, the local API can start, but it does not export
+traces, prompts, responses, token usage, or estimated invocation costs.
 
 ## 1. Get the source
 
@@ -67,13 +81,18 @@ Create a local configuration file without overwriting an existing one:
 cp -n demos/order_fulfillment/.env.example demos/order_fulfillment/.env
 ```
 
-Open `demos/order_fulfillment/.env` and set the required values:
+Open `demos/order_fulfillment/.env` and set the OCI and Langfuse values:
 
 ```dotenv
 OCI_REGION=<oci-region>
 MODEL_ID=<oci-model-id>
 OCI_COMPARTMENT_ID=<compartment-ocid>
 OCI_AUTH_TYPE=API_KEY
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+LANGFUSE_PUBLIC_KEY=pk-lf-your-project-key
+LANGFUSE_SECRET_KEY=sk-lf-your-project-key
+LANGFUSE_INGESTION_VERSION=4
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=
 ```
 
 For `API_KEY` authentication, configure the OCI SDK profile and signing key on
@@ -94,21 +113,16 @@ provides the credentials.
 Never commit `.env`, private keys, OCIDs that should remain private, or trace
 service keys. The `.env.example` file is a template only.
 
-### Optional: enable remote traces in Langfuse
+`LANGFUSE_BASE_URL` is the Cloud instance base URL for the selected region;
+use `https://cloud.langfuse.com` for the EU Cloud shown above. Do not append
+`/api/public/otel` or `/v1/traces`. Obtain the public and secret keys from the
+project settings in Langfuse. Set all three Langfuse values together. Do not
+configure `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` at the same time as Langfuse.
 
-NeMo Relay can export the demo's traces directly to Langfuse through OTLP.
-Add these values to the same `.env` file when you have a Langfuse project:
-
-```dotenv
-LANGFUSE_BASE_URL=https://your-langfuse.example.com
-LANGFUSE_PUBLIC_KEY=pk-lf-your-project-key
-LANGFUSE_SECRET_KEY=sk-lf-your-project-key
-LANGFUSE_INGESTION_VERSION=4
-OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=
-```
-
-Leave all Langfuse values empty to run without remote export. Do not configure
-`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` at the same time as Langfuse.
+The included pricing catalog enables estimated costs, but its initial rates are
+explicitly provisional and are not OCI invoice rates. Review and replace the
+catalog with applicable OCI billing values before using the estimate for
+financial reporting.
 
 ## 4. Start the agent
 
@@ -142,9 +156,10 @@ A successful request returns `status: "confirmed"`, an order ID, and the
 remaining inventory. API documentation is available at
 `http://127.0.0.1:8000/docs`.
 
-If Langfuse is configured, look for the `order_fulfillment` trace in the
-configured project after submitting an order. Trace export is batched, so it
-may take a short time to appear.
+Look for the `order_fulfillment` trace in the configured Langfuse project after
+submitting an order. It contains the agent steps, prompts, responses, token
+usage, and estimated invocation cost. Trace export is batched, so it may take
+a short time to appear.
 
 ## Next steps
 
