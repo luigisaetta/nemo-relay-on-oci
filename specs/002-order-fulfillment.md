@@ -7,7 +7,8 @@ defines LLM token and pricing telemetry; [Specification 005](005-pii-redaction.m
 defines phone-number redaction for exported telemetry while preserving the
 client-facing request and response; [Specification 006](006-setup-and-doctor.md)
 defines macOS setup and user-environment diagnostics without changing the
-workflow.
+workflow; [Specification 007](007-prompt-guardrail.md) defines layered
+pre-LLM prompt-injection detection and the blocked business outcome.
 
 ## Objective
 

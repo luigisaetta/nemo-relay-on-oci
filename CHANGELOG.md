@@ -7,6 +7,8 @@ when released.
 
 ### Changed
 
+- 2026-09-26: Added the layered prompt-injection guardrail design specification
+  for the order-fulfillment demo.
 - 2026-09-26: Made doctor reject successful Langfuse responses that do not
   identify a project associated with the configured API keys.
 - 2026-09-26: Restored the OCI Enterprise AI-only Dockerfile scope and improved
