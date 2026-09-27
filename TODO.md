@@ -38,3 +38,15 @@
     passed as a dictionary because the 0.9.2 `PiiRedactionConfig` dataclass
     does not expose `profiles`;
   - example output: `mario.rossi@example.com` → `m**********@example.com`.
+- **Planned — Evaluate `llm.execute` for order_fulfillment:** Consider migrating
+  the extraction node of `demos/order_fulfillment` from the manual
+  `llm.call`/`llm.call_end` API to the managed `llm.execute` pipeline, as in
+  `demos/order_fulfillment_responses`.
+  - Expected benefits: native guardrail execution (no explicit
+    `conditional_execution` step) and error handling by the pipeline, removing
+    roughly 30–40 lines.
+  - Still required: the OpenAI-format response adapter (`openai_response`),
+    because `ChatOCIGenAI` does not return OpenAI payloads, and `run_sync`,
+    because the node is synchronous.
+  - Not yet verified on this demo; keep the current manual approach if the two
+    demos should intentionally show different integration levels.
