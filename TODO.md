@@ -50,3 +50,20 @@
     because the node is synchronous.
   - Not yet verified on this demo; keep the current manual approach if the two
     demos should intentionally show different integration levels.
+- **Planned — Reusable Relay integration template:** After the demos stabilize
+  (after the documentation restructuring and the next NeMo Relay upgrade),
+  extract the stable core of the Relay integration into a reusable template
+  that new agents copy, for example `templates/relay_oci.py`. Existing demos
+  stay independent full copies.
+  - Candidate stable parts: `trace_scope`, the Langfuse OTLP endpoint, the
+    pricing catalog loader, the PII component with its verified patterns, and
+    the OCI Guardrails call with fail-open behavior.
+  - Parts that stay in each agent: user-text extraction for the guardrail
+    (it depends on the API format), the model call (`llm.execute` or
+    `llm.call`), agent-specific metadata, business outcomes, and node scopes.
+  - Rationale: so far `telemetry.py` changed in 7 commits and
+    `prompt_guard.py` in 3 (2 bug fixes), and the two demos already diverge
+    where API formats differ. Extracting too early would fix the wrong
+    abstraction.
+  - Once available, shorten `docs/nemo-relay-integration-guide.md` to
+    reference the template.
